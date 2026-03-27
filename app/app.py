@@ -6,13 +6,6 @@ import urllib.parse
 import numpy as np
 from datetime import datetime
 
-# --- INTENTAR IMPORTAR LIBRERÍA DE CLICKS ---
-try:
-    from streamlit_plotly_events import plotly_events
-    CLICK_HABILITADO = True
-except ImportError:
-    CLICK_HABILITADO = False
-
 # --- 1. CONFIGURACIÓN ÚNICA DE PÁGINA ---
 # Esto DEBE ir primero siempre
 st.set_page_config(page_title="Plataforma RRHH | Grupo Cenoa", layout="wide", page_icon="🏢")
@@ -142,7 +135,6 @@ def load_data_comercial(anio_seleccionado):
             
         df = df[df['Vendedor'].astype(str).str.upper() != 'VENDEDOR']
         df['Iniciales'] = df['Vendedor'].apply(lambda x: "".join([n[0] for n in str(x).split() if n]).upper())
-        df['Size_Marker'] = df['Total_Acumulado'].clip(lower=1).fillna(1)
         
         columnas_porcentajes = [f"{m}_%" for m in meses_n]
         df['Alcance_Promedio_Real'] = df[columnas_porcentajes].mean(axis=1, skipna=True).fillna(0)
@@ -155,10 +147,15 @@ def get_ant(fecha, anio_ref):
     if pd.isnull(fecha): return "Sin Dato"
     diff = datetime.now() - fecha
     a, m = diff.days // 365, (diff.days % 365) // 30
-    if a > 0 and m > 0: return f"{a} años y {m} meses"
-    elif a > 0: return f"{a} años"
-    elif m > 0: return f"{m} meses"
-    else: return "Menos de 1 mes"
+    
+    if a > 0 and m > 0: 
+        return f"{a} años y {m} meses"
+    elif a > 0: 
+        return f"{a} años"
+    elif m > 0: 
+        return f"{m} meses"
+    else: 
+        return "Menos de 1 mes"
 
 # --- 4. BARRA LATERAL UNIFICADA ---
 st.sidebar.markdown('<div class="sidebar-header"><h1>GRUPO CENOA<br>PLATAFORMA RRHH</h1></div>', unsafe_allow_html=True)
@@ -413,14 +410,21 @@ elif modulo_elegido == "📈 Performance Comercial":
                         st.rerun() 
                 st.divider()
 
+            # --- GRÁFICO 9-BOX MEJORADO Y SÚPER RÁPIDO ---
             fig_9 = px.scatter(
                 df_9, x='X_Axis', y='Comp_Total_%', text='Iniciales', color='Empresa',
-                size='Size_Marker', hover_name='Vendedor',
+                hover_name='Vendedor',
                 range_x=[-5, 130], range_y=[-5, 110],
-                labels={'X_Axis': f'% Resultados Promedio Real', 'Comp_Total_%': '% Competencias'},
+                labels={'X_Axis': f'% Resultados', 'Comp_Total_%': '% Competencias'},
                 height=650, template="plotly_white"
             )
-            fig_9.update_traces(textposition='middle center', textfont=dict(color='white', size=11), marker=dict(opacity=0.9, line=dict(width=1.5, color='DarkSlateGrey')))
+            
+            # Tamaño de esfera fijo para que no desaparezcan con filtros
+            fig_9.update_traces(
+                marker=dict(size=28, opacity=0.9, line=dict(width=1.5, color='DarkSlateGrey')),
+                textposition='middle center', 
+                textfont=dict(color='white', size=11, family="Arial Black")
+            )
             
             for cat, info in quadrants.items():
                 fig_9.add_shape(type="rect", x0=info[2], x1=info[3], y0=info[4], y1=info[5], fillcolor=info[0], layer="below", line_width=0)
@@ -430,25 +434,15 @@ elif modulo_elegido == "📈 Performance Comercial":
             fig_9.add_hline(y=33.3, line_dash="dash", line_color="rgba(0,0,0,0.3)")
             fig_9.add_hline(y=66.6, line_dash="dash", line_color="rgba(0,0,0,0.3)")
 
-            vendedor_seleccionado = None
-            
-            if CLICK_HABILITADO:
-                st.caption("👈 **Haz click en una esfera** para ver la ficha técnica del vendedor.")
-                puntos_click = plotly_events(fig_9, click_event=True, hover_event=False)
-                if len(puntos_click) > 0:
-                    click_x = puntos_click[0]['x']
-                    click_y = puntos_click[0]['y']
-                    match = df_9[(df_9['X_Axis'].round(1) == round(click_x, 1)) & (df_9['Comp_Total_%'].round(1) == round(click_y, 1))]
-                    if not match.empty: vendedor_seleccionado = match.iloc[0]['Vendedor']
-            else:
-                st.plotly_chart(fig_9, use_container_width=True)
+            st.plotly_chart(fig_9, use_container_width=True)
                 
             st.divider()
+            
+            # Buscador manual intacto
             opciones_vendedores = ["-- Seleccionar Asesor --"] + sorted(df_9['Vendedor'].unique())
-            idx_defecto = opciones_vendedores.index(vendedor_seleccionado) if vendedor_seleccionado in opciones_vendedores else 0
             
             st.markdown("### 📋 Ficha Técnica de Desempeño")
-            v_ficha = st.selectbox("🔎 Buscador Manual de Asesor:", opciones_vendedores, index=idx_defecto)
+            v_ficha = st.selectbox("🔎 Buscador Manual de Asesor:", opciones_vendedores, index=0)
 
             if v_ficha != "-- Seleccionar Asesor --":
                 v_f = df_9[df_9['Vendedor'] == v_ficha].iloc[0]
