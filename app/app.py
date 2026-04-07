@@ -75,7 +75,11 @@ def load_all_data_desempeno():
     URL = "https://docs.google.com/spreadsheets/d/1fXJ2UsTeOE8ipYXeP5oQYYCHRNtDJDRC/edit"
     try:
         sheet_name = urllib.parse.quote("DESEMPEÑO")
-        csv_url = f"{URL.split('/edit')[0]}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
+        
+        # TRUCO ANTI-CACHÉ: Agregamos el timestamp actual al final de la URL
+        timestamp_actual = int(datetime.now().timestamp())
+        csv_url = f"{URL.split('/edit')[0]}/gviz/tq?tqx=out:csv&sheet={sheet_name}&t={timestamp_actual}"
+        
         df = pd.read_csv(csv_url)
         df.columns = df.columns.str.strip()
         m = {
@@ -104,7 +108,11 @@ def load_all_data_desempeno():
 def load_data_comercial(anio_seleccionado):
     SHEET_ID = "1fXJ2UsTeOE8ipYXeP5oQYYCHRNtDJDRC" 
     SHEET_NAME = f"PERFO%20COMERCIAL{anio_seleccionado}" 
-    URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={SHEET_NAME}"
+    
+    # TRUCO ANTI-CACHÉ: Agregamos el timestamp actual al final de la URL
+    timestamp_actual = int(datetime.now().timestamp())
+    URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={SHEET_NAME}&t={timestamp_actual}"
+    
     try:
         df = pd.read_csv(URL)
         mapping = {
