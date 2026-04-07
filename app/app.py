@@ -72,15 +72,16 @@ st.markdown("""
 # Carga de Datos - Desempeño
 @st.cache_data(ttl=600)
 def load_all_data_desempeno():
-    # NUEVO LINK EXCLUSIVO DE DESEMPEÑO
+    # TU NUEVO LINK DE PUBLICACIÓN DE DESEMPEÑO
     URL_BASE = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTQADeOCMHm7dobi6lAfF5i6mdRWKUhCAjcqIIhmfeWkt2uIPWJDrBjrr2xSuLMzw/pub?output=csv"
     try:
-        # TRUCO ANTI-CACHÉ: Agregamos el timestamp actual al final de la URL
+        # TRUCO ANTI-CACHÉ
         timestamp_actual = int(datetime.now().timestamp())
         csv_url = f"{URL_BASE}&t={timestamp_actual}"
         
         df = pd.read_csv(csv_url)
         df.columns = df.columns.str.strip()
+        
         m = {
             'nombre': df.columns[1], 'empresa': df.columns[2], 'localidad': df.columns[3],
             'area': df.columns[4], 'puesto': df.columns[5],
@@ -99,16 +100,22 @@ def load_all_data_desempeno():
         df['Sem_Tab'] = df[m['tablero']].apply(get_sem)
         df['Inic'] = df[m['nombre']].apply(lambda x: (str(x).split()[0][0] + (str(x).split()[1][0] if len(str(x).split())>1 else "")).upper() if pd.notna(x) and len(str(x))>3 else "")
         return df, m, datetime.now().strftime("%d/%m/%Y %H:%M"), cmap_v
+    
     except Exception as e:
+        st.error(f"🚨 Detalle técnico del error de conexión: {e}")
+        if 'df' in locals():
+            st.warning(f"Columnas que el sistema detectó en tu link: {df.columns.tolist()}")
         return None, None, None, None
+
 
 # Carga de Datos - Comercial
 @st.cache_data(ttl=600)
 def load_data_comercial(anio_seleccionado):
+    # EL LINK ORIGINAL DE PERFORMANCE COMERCIAL
     SHEET_ID = "1fXJ2UsTeOE8ipYXeP5oQYYCHRNtDJDRC" 
     SHEET_NAME = f"PERFO%20COMERCIAL{anio_seleccionado}" 
     
-    # TRUCO ANTI-CACHÉ: Agregamos el timestamp actual al final de la URL
+    # TRUCO ANTI-CACHÉ
     timestamp_actual = int(datetime.now().timestamp())
     URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={SHEET_NAME}&t={timestamp_actual}"
     
@@ -275,8 +282,6 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                 fig_evol.add_shape(type="line", x0=0, y0=100, x1=11, y1=100, line=dict(color="#27ae60", width=2, dash="dash"))
                 st.plotly_chart(fig_evol.update_layout(height=450, template="plotly_white", yaxis=dict(range=[0, 165])), use_container_width=True)
             else: st.info("👈 Seleccione un colaborador en los filtros superiores.")
-    else:
-        st.error("Error al conectar con la base de datos de Desempeño.")
 
 
 # =====================================================================
