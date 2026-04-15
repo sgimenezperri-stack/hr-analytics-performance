@@ -5,14 +5,15 @@ import plotly.graph_objects as go
 import urllib.parse
 import numpy as np
 from datetime import datetime
+import time
 
 # --- 1. CONFIGURACIÓN ÚNICA DE PÁGINA ---
-# Esto DEBE ir primero siempre
 st.set_page_config(page_title="Plataforma RRHH | Grupo Cenoa", layout="wide", page_icon="🏢")
 
 # --- VARIABLES DE ESTADO GLOBALES ---
 if 'pagina_desempeno' not in st.session_state: st.session_state.pagina_desempeno = "👤 Desempeño Gral."
 if 'det_sel' not in st.session_state: st.session_state.det_sel = None
+if 'cat_filtrada' not in st.session_state: st.session_state.cat_filtrada = None
 
 # --- 2. CSS UNIFICADO ---
 st.markdown("""
@@ -24,8 +25,7 @@ st.markdown("""
     [data-testid="stSidebar"] { background-color: #1e272e !important; min-width: 320px !important; }
     .sidebar-header { padding: 15px; text-align: center; border-bottom: 1px solid #34495e; margin-bottom: 20px;}
     .sidebar-header h1 { color: white !important; font-size: 1.1rem; font-weight: 800; letter-spacing: 1.5px; line-height: 1.2; }
-    .update-text { color: #bdc3c7 !important; font-size: 0.7rem; margin: 10px 0; text-align: center; }
-
+    
     /* Botones del Menú Lateral */
     [data-testid="stSidebar"] .stRadio > label { font-size: 14px !important; color: #ffffff !important; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
     [data-testid="stRadio"] div[role="radiogroup"] > label > div:first-child { display: none !important; }
@@ -50,7 +50,7 @@ st.markdown("""
     .kpi-container h3 { margin: 5px 0 0 0; font-size: 2.2rem; font-weight: 800; color: #1a202c; line-height: 1; }
     .dotacion-highlight h3 { color: #3498db !important; }
 
-    /* Botones de Categoría (Armónicos) */
+    /* Botones de Categoría */
     .main div.stButton > button {
         border-radius: 10px; font-weight: 700; background-color: white; 
         border: 1px solid #e2e8f0; height: 60px !important; font-size: 0.85rem !important;
@@ -67,7 +67,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 
-# --- 3. MOTORES DE CARGA DE DATOS (Ambos Scripts) ---
+# --- 3. MOTORES DE CARGA DE DATOS ---
 
 # Carga de Datos - Desempeño
 @st.cache_data(ttl=600)
@@ -75,7 +75,9 @@ def load_all_data_desempeno():
     URL = "https://docs.google.com/spreadsheets/d/1fXJ2UsTeOE8ipYXeP5oQYYCHRNtDJDRC/edit"
     try:
         sheet_name = urllib.parse.quote("DESEMPEÑO")
-        csv_url = f"{URL.split('/edit')[0]}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
+        cache_buster = int(time.time()) # Rompe-caché
+        csv_url = f"{URL.split('/edit')[0]}/gviz/tq?tqx=out:csv&sheet={sheet_name}&_={cache_buster}"
+        
         df = pd.read_csv(csv_url)
         df.columns = df.columns.str.strip()
         m = {
@@ -84,8 +86,10 @@ def load_all_data_desempeno():
             'comp': '%PUNT.EC.1°INSTANCIA COMPETENCIAS', 'tablero': '% ACUMULADO TABLERO', 'final': 'DESEMPEÑO'
         }
         df[m['nombre']] = df[m['nombre']].astype(str).str.upper().str.strip()
+        
         for k in ['comp', 'tablero', 'final']:
-            df[m[k]] = pd.to_numeric(df[m[k]].astype(str).str.replace('-', '').str.replace('%', '').str.replace(',', '.').str.strip(), errors='coerce')
+            clean_str = df[m[k]].astype(str).str.replace('-', '').str.replace('%', '').str.replace(',', '.').str.strip()
+            df[m[k]] = pd.to_numeric(clean_str, errors='coerce')
         
         cmap_v = {"Verde (>90%)": "#27ae60", "Amarillo (80-90%)": "#f1c40f", "Rojo (<80%)": "#c0392b", "Sin Dato": "#bdc3c7"}
         def get_sem(v):
@@ -104,7 +108,8 @@ def load_all_data_desempeno():
 def load_data_comercial(anio_seleccionado):
     SHEET_ID = "1fXJ2UsTeOE8ipYXeP5oQYYCHRNtDJDRC" 
     SHEET_NAME = f"PERFO%20COMERCIAL{anio_seleccionado}" 
-    URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={SHEET_NAME}"
+    cache_buster = int(time.time()) # Rompe-caché
+    URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={SHEET_NAME}&_={cache_buster}"
     try:
         df = pd.read_csv(URL)
         mapping = {
@@ -148,23 +153,15 @@ def get_ant(fecha, anio_ref):
     diff = datetime.now() - fecha
     a, m = diff.days // 365, (diff.days % 365) // 30
     
-    if a > 0 and m > 0: 
-        return f"{a} años y {m} meses"
-    elif a > 0: 
-        return f"{a} años"
-    elif m > 0: 
-        return f"{m} meses"
-    else: 
-        return "Menos de 1 mes"
+    if a > 0 and m > 0: return f"{a} años y {m} meses"
+    elif a > 0: return f"{a} años"
+    elif m > 0: return f"{m} meses"
+    else: return "Menos de 1 mes"
 
 # --- 4. BARRA LATERAL UNIFICADA ---
 st.sidebar.markdown('<div class="sidebar-header"><h1>GRUPO CENOA<br>PLATAFORMA RRHH</h1></div>', unsafe_allow_html=True)
 
-# Selector Principal de Plataforma
-modulo_elegido = st.sidebar.selectbox(
-    "Seleccione el Tablero:",
-    ["📊 Gestión de Desempeño", "📈 Performance Comercial"]
-)
+modulo_elegido = st.sidebar.selectbox("Seleccione el Tablero:", ["📊 Gestión de Desempeño", "📈 Performance Comercial"])
 st.sidebar.divider()
 
 if st.sidebar.button("🔄 ACTUALIZAR BASES DE DATOS", use_container_width=True, type="secondary"):
@@ -222,11 +219,22 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                 st.dataframe(cats[st.session_state.det_sel][[m['nombre'], m['puesto'], m['final']]], use_container_width=True)
                 if st.button("✖️ Cerrar Detalle"): st.session_state.det_sel = None; st.rerun()
             
-            st.markdown(f'<div style="background-color:#e1f5fe; padding:15px; border-radius:10px; border-left:5px solid #0288d1; margin-bottom:20px;">Promedio de Desempeño: <b>{df_final[m["final"]].mean():.1f}%</b></div>', unsafe_allow_html=True)
+            # Promedio validado
+            prom_gral = df_final[m["final"]].mean()
+            txt_prom_gral = "S/D" if pd.isna(prom_gral) else f"{prom_gral:.1f}%"
+            st.markdown(f'<div style="background-color:#e1f5fe; padding:15px; border-radius:10px; border-left:5px solid #0288d1; margin-bottom:20px;">Promedio de Desempeño: <b>{txt_prom_gral}</b></div>', unsafe_allow_html=True)
             
-            fig_bub = px.scatter(df_final.dropna(subset=[m['comp'], m['tablero']]), x=m['tablero'], y=m['comp'], color=m['area'], text='Inic', hover_name=m['nombre'], height=600, template="plotly_white")
-            fig_bub.update_traces(textposition='middle center', textfont=dict(size=10, color='white', family="Arial Black"), marker=dict(size=35, opacity=0.8, line=dict(width=1, color='white')))
-            st.plotly_chart(fig_bub, use_container_width=True)
+            # Gráfico validado
+            df_grafico = df_final.dropna(subset=[m['comp'], m['tablero']])
+            if not df_grafico.empty:
+                fig_bub = px.scatter(df_grafico, x=m['tablero'], y=m['comp'], color=m['area'], text='Inic', hover_name=m['nombre'], height=600, template="plotly_white")
+                fig_bub.update_layout(xaxis=dict(range=[-5, 105], title="% Acumulado Tablero"), yaxis=dict(range=[-5, 105], title="% Competencias"))
+                fig_bub.update_traces(textposition='middle center', textfont=dict(size=10, color='white', family="Arial Black"), marker=dict(size=35, opacity=0.8, line=dict(width=1, color='white')))
+                st.plotly_chart(fig_bub, use_container_width=True)
+            else:
+                st.warning("⚠️ El gráfico no se puede mostrar: Faltan notas de Tablero o Competencias para los colaboradores filtrados, o los datos tienen errores en el Excel.")
+                st.write("🔍 **Diagnóstico de datos (Primeros resultados):**")
+                st.dataframe(df_final[[m['nombre'], m['comp'], m['tablero'], m['final']]].head(10), use_container_width=True)
 
         elif st.session_state.pagina_desempeno in ["🧠 Competencias", "📑 Tableros"]:
             is_comp = "Competencias" in st.session_state.pagina_desempeno
@@ -234,11 +242,14 @@ if modulo_elegido == "📊 Gestión de Desempeño":
             sem_d = 'Sem_Comp' if is_comp else 'Sem_Tab'
             evals = df_final[col_d].notna().sum(); no_evals = df_final[col_d].isna().sum()
             
+            prom_seccion = df_final[col_d].mean()
+            txt_prom_seccion = "S/D" if pd.isna(prom_seccion) else f"{prom_seccion:.1f}%"
+            
             q = st.columns(4)
             with q[0]: st.markdown(f'<div class="kpi-container"><p>Total</p><h3>{len(df_final)}</h3></div>', unsafe_allow_html=True)
             with q[1]: st.markdown(f'<div class="kpi-container"><p>Evaluados</p><h3 style="color:#3498db;">{evals}</h3></div>', unsafe_allow_html=True)
             with q[2]: st.markdown(f'<div class="kpi-container"><p>Pendientes</p><h3 style="color:#e74c3c;">{no_evals}</h3></div>', unsafe_allow_html=True)
-            with q[3]: st.markdown(f'<div class="kpi-container"><p>Promedio %</p><h3 style="color:#27ae60;">{df_final[col_d].mean():.1f}%</h3></div>', unsafe_allow_html=True)
+            with q[3]: st.markdown(f'<div class="kpi-container"><p>Promedio %</p><h3 style="color:#27ae60;">{txt_prom_seccion}</h3></div>', unsafe_allow_html=True)
             
             st.markdown("<br>", unsafe_allow_html=True)
             cats_sub = {"CRÍTICO": df_final[df_final[col_d] < 70], "ESPERADO": df_final[(df_final[col_d] >= 70) & (df_final[col_d] < 85)], "ALTO": df_final[(df_final[col_d] >= 85) & (df_final[col_d] < 95)], "SOBRESALIENTE": df_final[df_final[col_d] >= 95], "SIN DATO": df_final[df_final[col_d].isna()]}
@@ -262,7 +273,10 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                 
                 e1, e2 = st.columns([3, 1])
                 with e1: st.title(f_nom); st.caption(f"{c_data[m['puesto']]} | {c_data[m['empresa']]}")
-                with e2: st.markdown(f'<div class="kpi-container"><p>Prom. Anual</p><h3 style="color:#27ae60;">{np.nanmean(vals):.1f}%</h3></div>', unsafe_allow_html=True)
+                
+                prom_evolucion = np.nanmean(vals)
+                txt_prom_evolucion = "S/D" if np.isnan(prom_evolucion) else f"{prom_evolucion:.1f}%"
+                with e2: st.markdown(f'<div class="kpi-container"><p>Prom. Anual</p><h3 style="color:#27ae60;">{txt_prom_evolucion}</h3></div>', unsafe_allow_html=True)
                 
                 fig_evol = go.Figure(go.Scatter(x=meses, y=vals, mode='lines+markers+text', line=dict(color='#3498db', width=4), text=[f"{v:.0f}%" if not np.isnan(v) else "" for v in vals], textposition="top center"))
                 fig_evol.add_shape(type="line", x0=0, y0=100, x1=11, y1=100, line=dict(color="#27ae60", width=2, dash="dash"))
@@ -385,8 +399,6 @@ elif modulo_elegido == "📈 Performance Comercial":
             bc4, bc5, bc6 = st.columns(3)
             bc7, bc8, bc9 = st.columns(3)
             
-            if 'cat_filtrada' not in st.session_state: st.session_state.cat_filtrada = None
-            
             for i, b_col in enumerate([bc1, bc2, bc3, bc4, bc5, bc6, bc7, bc8, bc9]):
                 nombre_cat = cats[i]
                 emoji = quadrants[nombre_cat][1]
@@ -410,7 +422,7 @@ elif modulo_elegido == "📈 Performance Comercial":
                         st.rerun() 
                 st.divider()
 
-            # --- GRÁFICO 9-BOX MEJORADO Y SÚPER RÁPIDO ---
+            # --- GRÁFICO 9-BOX ---
             fig_9 = px.scatter(
                 df_9, x='X_Axis', y='Comp_Total_%', text='Iniciales', color='Empresa',
                 hover_name='Vendedor',
@@ -419,7 +431,6 @@ elif modulo_elegido == "📈 Performance Comercial":
                 height=650, template="plotly_white"
             )
             
-            # Tamaño de esfera fijo para que no desaparezcan con filtros
             fig_9.update_traces(
                 marker=dict(size=28, opacity=0.9, line=dict(width=1.5, color='DarkSlateGrey')),
                 textposition='middle center', 
@@ -438,7 +449,6 @@ elif modulo_elegido == "📈 Performance Comercial":
                 
             st.divider()
             
-            # Buscador manual intacto
             opciones_vendedores = ["-- Seleccionar Asesor --"] + sorted(df_9['Vendedor'].unique())
             
             st.markdown("### 📋 Ficha Técnica de Desempeño")
