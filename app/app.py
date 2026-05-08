@@ -175,16 +175,17 @@ def get_ant(fecha, anio_ref):
     else: return "Menos de 1 mes"
 
 # --- 4. BARRA LATERAL UNIFICADA ---
-st.sidebar.markdown('<div class="sidebar-header"><h1>GRUPO CENOA<br>PLATAFORMA RRHH</h1></div>', unsafe_allow_html=True)
+st.sidebar.markdown('<div class="sidebar-header"><h1>GRUPO CENOA<br>Gestión de Performance</h1></div>', unsafe_allow_html=True)
 
-modulo_elegido = st.sidebar.selectbox("Seleccione el Tablero:", ["📊 Gestión de Desempeño", "📈 Performance Comercial"])
-st.sidebar.divider()
-
-if st.sidebar.button("🔄 ACTUALIZAR BASES DE DATOS", use_container_width=True, type="secondary"):
+# --- MODIFICACIÓN DE DISEÑO: Botón reubicado y más pequeño ---
+if st.sidebar.button("🔄 Actualizar Datos", type="secondary"):
     st.cache_data.clear()
     st.sidebar.success("¡Datos actualizados!")
 
-st.sidebar.markdown("<br>", unsafe_allow_html=True)
+st.sidebar.divider()
+
+modulo_elegido = st.sidebar.selectbox("Seleccione el Tablero:", ["📊 Gestión de Desempeño", "📈 Performance Comercial"])
+st.sidebar.divider()
 
 
 # =====================================================================
