@@ -201,6 +201,10 @@ def sync_filtros_desempeno():
                 st.session_state.f_emp_des = row.iloc[0][m_dict['empresa']]
                 st.session_state.f_loc_des = row.iloc[0][m_dict['localidad']]
                 st.session_state.f_are_des = row.iloc[0][m_dict['area']]
+    else:
+        st.session_state.f_emp_des = "Todas"
+        st.session_state.f_loc_des = "Todas"
+        st.session_state.f_are_des = "Todas"
 
 def sync_filtros_metricas():
     if st.session_state.f_vend_com:
@@ -221,6 +225,9 @@ def sync_filtros_9box():
             if not row.empty:
                 st.session_state.f_emp_9box = row.iloc[0]['Empresa']
                 st.session_state.f_loc_9box = row.iloc[0]['Localidad']
+    else:
+        st.session_state.f_emp_9box = "Todas"
+        st.session_state.f_loc_9box = "Todas"
 
 # --- 4. BARRA LATERAL UNIFICADA ---
 st.sidebar.markdown('<div class="sidebar-header"><h1>GRUPO CENOA<br>Gestión de Performance</h1></div>', unsafe_allow_html=True)
