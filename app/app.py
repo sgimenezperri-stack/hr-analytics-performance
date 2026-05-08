@@ -91,7 +91,6 @@ def load_all_data_desempeno():
             clean_str = df[m[k]].astype(str).str.replace('-', '').str.replace('%', '').str.replace(',', '.').str.strip()
             df[m[k]] = pd.to_numeric(clean_str, errors='coerce')
         
-        # --- NUEVO AGREGADO: Calcular el promedio anual del tablero para reemplazar el dato estático ---
         def calc_prom_anual(row):
             try:
                 # Lee las columnas de los meses (índices 15 al 26)
@@ -103,13 +102,10 @@ def load_all_data_desempeno():
 
         df[m['tablero']] = df.apply(calc_prom_anual, axis=1)
         
-        # --- NUEVO AGREGADO: Buscar columna de fecha de ingreso para la antigüedad ---
-        col_ingreso = [c for c in df.columns if 'INGRESO' in str(c).upper()]
-        if col_ingreso:
-            df['Fecha_Ingreso'] = pd.to_datetime(df[col_ingreso[0]], dayfirst=True, errors='coerce')
-        else:
-            df['Fecha_Ingreso'] = pd.NaT
-        # -----------------------------------------------------------------------------
+        # --- CORRECCIÓN DE ANTIGÜEDAD: Apuntar directo a la Columna J (índice 9) ---
+        col_j = df.columns[9]
+        df['Fecha_Ingreso'] = pd.to_datetime(df[col_j], dayfirst=True, errors='coerce')
+        # --------------------------------------------------------------------------
 
         cmap_v = {"Verde (>90%)": "#27ae60", "Amarillo (80-90%)": "#f1c40f", "Rojo (<80%)": "#c0392b", "Sin Dato": "#bdc3c7"}
         def get_sem(v):
@@ -293,14 +289,12 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                 
                 e1, e2 = st.columns([3, 1])
                 
-                # --- NUEVO AGREGADO: Mostrar Área y Antigüedad debajo del nombre ---
                 fecha_ingreso_val = c_data.get('Fecha_Ingreso', pd.NaT)
                 antiguedad_str = get_ant(fecha_ingreso_val, datetime.now().year) if pd.notna(fecha_ingreso_val) else "S/D"
                 
                 with e1: 
                     st.title(f_nom)
                     st.caption(f"{c_data[m['puesto']]} | Área: {c_data[m['area']]} | Antigüedad: {antiguedad_str} | {c_data[m['empresa']]}")
-                # -------------------------------------------------------------------
                 
                 prom_evolucion = np.nanmean(vals)
                 txt_prom_evolucion = "S/D" if np.isnan(prom_evolucion) else f"{prom_evolucion:.1f}%"
