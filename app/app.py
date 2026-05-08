@@ -15,6 +15,20 @@ if 'pagina_desempeno' not in st.session_state: st.session_state.pagina_desempeno
 if 'det_sel' not in st.session_state: st.session_state.det_sel = None
 if 'cat_filtrada' not in st.session_state: st.session_state.cat_filtrada = None
 
+# --- NUEVAS VARIABLES PARA SINCRONIZACIÓN DE FILTROS ---
+if 'f_emp_des' not in st.session_state: st.session_state.f_emp_des = "Todas"
+if 'f_loc_des' not in st.session_state: st.session_state.f_loc_des = "Todas"
+if 'f_are_des' not in st.session_state: st.session_state.f_are_des = "Todas"
+if 'f_nom_des' not in st.session_state: st.session_state.f_nom_des = "Todos"
+
+if 'f_emp_com' not in st.session_state: st.session_state.f_emp_com = "Todas"
+if 'f_loc_com' not in st.session_state: st.session_state.f_loc_com = "Todas"
+if 'f_vend_com' not in st.session_state: st.session_state.f_vend_com = None
+
+if 'f_emp_9box' not in st.session_state: st.session_state.f_emp_9box = "Todas"
+if 'f_loc_9box' not in st.session_state: st.session_state.f_loc_9box = "Todas"
+if 'f_vend_9box' not in st.session_state: st.session_state.f_vend_9box = "-- Seleccionar Asesor --"
+
 # --- 2. CSS UNIFICADO ---
 st.markdown("""
     <style>
@@ -26,12 +40,15 @@ st.markdown("""
     .sidebar-header { padding: 15px; text-align: center; border-bottom: 1px solid #34495e; margin-bottom: 20px;}
     .sidebar-header h1 { color: white !important; font-size: 1.1rem; font-weight: 800; letter-spacing: 1.5px; line-height: 1.2; }
     
-    /* --- NUEVO AGREGADO: Títulos del Sidebar en Blanco --- */
+    /* --- Títulos del Sidebar en Blanco --- */
     [data-testid="stSidebar"] .stSelectbox label p, 
     [data-testid="stSidebar"] div[data-testid="stMarkdownContainer"] > p { 
         color: #ffffff !important; 
     }
     
+    /* --- BOTÓN ACTUALIZAR EN NEGRO --- */
+    [data-testid="stSidebar"] div.stButton > button p { color: #000000 !important; font-weight: 800 !important; }
+
     /* Botones del Menú Lateral */
     [data-testid="stSidebar"] .stRadio > label { font-size: 14px !important; color: #ffffff !important; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
     [data-testid="stRadio"] div[role="radiogroup"] > label > div:first-child { display: none !important; }
@@ -74,8 +91,6 @@ st.markdown("""
 
 
 # --- 3. MOTORES DE CARGA DE DATOS ---
-
-# Carga de Datos - Desempeño
 @st.cache_data(ttl=600)
 def load_all_data_desempeno():
     URL = "https://docs.google.com/spreadsheets/d/1fXJ2UsTeOE8ipYXeP5oQYYCHRNtDJDRC/edit"
@@ -99,7 +114,6 @@ def load_all_data_desempeno():
         
         def calc_prom_anual(row):
             try:
-                # Lee las columnas de los meses (índices 15 al 26)
                 vals = [float(str(row.iloc[i]).replace('%','').replace(',','.')) if str(row.iloc[i]) not in ['-','nan','', 'None'] else np.nan for i in range(15,27)]
                 valid_vals = [v for v in vals if not np.isnan(v)]
                 return np.mean(valid_vals) if valid_vals else np.nan
@@ -123,7 +137,6 @@ def load_all_data_desempeno():
     except Exception as e:
         return None, None, None, None
 
-# Carga de Datos - Comercial
 @st.cache_data(ttl=600)
 def load_data_comercial(anio_seleccionado):
     SHEET_ID = "1fXJ2UsTeOE8ipYXeP5oQYYCHRNtDJDRC" 
@@ -178,6 +191,37 @@ def get_ant(fecha, anio_ref):
     elif m > 0: return f"{m} meses"
     else: return "Menos de 1 mes"
 
+# --- FUNCIONES DE SINCRONIZACIÓN DE FILTROS ---
+def sync_filtros_desempeno():
+    if st.session_state.f_nom_des != "Todos":
+        df, m_dict, _, _ = load_all_data_desempeno()
+        if df is not None:
+            row = df[df[m_dict['nombre']] == st.session_state.f_nom_des]
+            if not row.empty:
+                st.session_state.f_emp_des = row.iloc[0][m_dict['empresa']]
+                st.session_state.f_loc_des = row.iloc[0][m_dict['localidad']]
+                st.session_state.f_are_des = row.iloc[0][m_dict['area']]
+
+def sync_filtros_metricas():
+    if st.session_state.f_vend_com:
+        anio = st.session_state.get('f_anio_com', "2026")
+        df, _, _ = load_data_comercial(anio)
+        if df is not None:
+            row = df[df['Vendedor'] == st.session_state.f_vend_com]
+            if not row.empty:
+                st.session_state.f_emp_com = row.iloc[0]['Empresa']
+                st.session_state.f_loc_com = row.iloc[0]['Localidad']
+
+def sync_filtros_9box():
+    if st.session_state.f_vend_9box != "-- Seleccionar Asesor --":
+        anio = st.session_state.get('f_anio_9box', "2026")
+        df, _, _ = load_data_comercial(anio)
+        if df is not None:
+            row = df[df['Vendedor'] == st.session_state.f_vend_9box]
+            if not row.empty:
+                st.session_state.f_emp_9box = row.iloc[0]['Empresa']
+                st.session_state.f_loc_9box = row.iloc[0]['Localidad']
+
 # --- 4. BARRA LATERAL UNIFICADA ---
 st.sidebar.markdown('<div class="sidebar-header"><h1>GRUPO CENOA<br>Gestión de Performance</h1></div>', unsafe_allow_html=True)
 
@@ -210,19 +254,31 @@ if modulo_elegido == "📊 Gestión de Desempeño":
 
         st.title("Gestión de Desempeño")
         
-        # FILTROS
+        # FILTROS CON ESTADOS
         f_cols = st.columns([1.5, 1.5, 1.5, 2.5, 1.2])
-        with f_cols[0]: f_emp = st.selectbox("🏢 Empresa", ["Todas"] + sorted(df_raw_d[m['empresa']].dropna().unique().tolist()))
-        with f_cols[1]: f_loc = st.selectbox("📍 Localidad", ["Todas"] + sorted(df_raw_d[m['localidad']].dropna().unique().tolist()))
-        with f_cols[2]: f_are = st.selectbox("📂 Área", ["Todas"] + sorted(df_raw_d[m['area']].dropna().unique().tolist()))
+        
+        op_emp = ["Todas"] + sorted(df_raw_d[m['empresa']].dropna().unique().tolist())
+        if st.session_state.f_emp_des not in op_emp: st.session_state.f_emp_des = "Todas"
+        with f_cols[0]: f_emp = st.selectbox("🏢 Empresa", op_emp, key="f_emp_des")
+        
+        op_loc = ["Todas"] + sorted(df_raw_d[m['localidad']].dropna().unique().tolist())
+        if st.session_state.f_loc_des not in op_loc: st.session_state.f_loc_des = "Todas"
+        with f_cols[1]: f_loc = st.selectbox("📍 Localidad", op_loc, key="f_loc_des")
+        
+        op_are = ["Todas"] + sorted(df_raw_d[m['area']].dropna().unique().tolist())
+        if st.session_state.f_are_des not in op_are: st.session_state.f_are_des = "Todas"
+        with f_cols[2]: f_are = st.selectbox("📂 Área", op_are, key="f_are_des")
         
         df_f = df_raw_d.copy()
         if f_emp != "Todas": df_f = df_f[df_f[m['empresa']] == f_emp]
         if f_loc != "Todas": df_f = df_f[df_f[m['localidad']] == f_loc]
         if f_are != "Todas": df_f = df_f[df_f[m['area']] == f_are]
 
-        nombres_disp = sorted(df_f[m['nombre']].unique().tolist())
-        with f_cols[3]: f_nom = st.selectbox("🔍 Colaborador", ["Todos"] + nombres_disp)
+        nombres_disp = ["Todos"] + sorted(df_f[m['nombre']].unique().tolist())
+        if st.session_state.f_nom_des not in nombres_disp: st.session_state.f_nom_des = "Todos"
+        
+        with f_cols[3]: f_nom = st.selectbox("🔍 Colaborador", nombres_disp, key="f_nom_des", on_change=sync_filtros_desempeno)
+        
         df_final = df_f if f_nom == "Todos" else df_f[df_f[m['nombre']] == f_nom]
         
         with f_cols[4]:
@@ -239,12 +295,10 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                 st.dataframe(cats[st.session_state.det_sel][[m['nombre'], m['puesto'], m['final']]], use_container_width=True)
                 if st.button("✖️ Cerrar Detalle"): st.session_state.det_sel = None; st.rerun()
             
-            # Promedio validado
             prom_gral = df_final[m["final"]].mean()
             txt_prom_gral = "S/D" if pd.isna(prom_gral) else f"{prom_gral:.1f}%"
             st.markdown(f'<div style="background-color:#e1f5fe; padding:15px; border-radius:10px; border-left:5px solid #0288d1; margin-bottom:20px;">Promedio de Desempeño: <b>{txt_prom_gral}</b></div>', unsafe_allow_html=True)
             
-            # Gráfico validado
             df_grafico = df_final.dropna(subset=[m['comp'], m['tablero']])
             if not df_grafico.empty:
                 fig_bub = px.scatter(df_grafico, x=m['tablero'], y=m['comp'], color=m['area'], text='Inic', hover_name=m['nombre'], height=600, template="plotly_white")
@@ -324,17 +378,22 @@ elif modulo_elegido == "📈 Performance Comercial":
 
     if dimension == "Métricas de Ventas":
         f1, f2, f3, f4 = st.columns([1, 2, 2, 1.5])
-        with f1: anio_sel = st.selectbox("AÑO", ["2026", "2025"])
+        with f1: anio_sel = st.selectbox("AÑO", ["2026", "2025"], key="f_anio_com")
         
         df_raw_c, lista_meses, comp_labels = load_data_comercial(anio_sel)
         
         if df_raw_c is not None:
-            with f2: 
-                op_e = [x for x in sorted(df_raw_c['Empresa'].dropna().unique()) if str(x).upper() != "EMPRESA"]
-                sel_emp = st.selectbox("EMPRESA", ["Todas"] + op_e)
-            with f3: 
-                op_l = [x for x in sorted(df_raw_c['Localidad'].dropna().unique()) if str(x).upper() != "LOCALIDAD"]
-                sel_loc = st.selectbox("LOCALIDAD", ["Todas"] + op_l)
+            op_e = sorted(df_raw_c['Empresa'].dropna().unique())
+            op_e = [x for x in op_e if str(x).upper() != "EMPRESA"]
+            if st.session_state.f_emp_com not in ["Todas"] + op_e: st.session_state.f_emp_com = "Todas"
+            
+            with f2: sel_emp = st.selectbox("EMPRESA", ["Todas"] + op_e, key="f_emp_com")
+            
+            op_l = sorted(df_raw_c['Localidad'].dropna().unique())
+            op_l = [x for x in op_l if str(x).upper() != "LOCALIDAD"]
+            if st.session_state.f_loc_com not in ["Todas"] + op_l: st.session_state.f_loc_com = "Todas"
+            
+            with f3: sel_loc = st.selectbox("LOCALIDAD", ["Todas"] + op_l, key="f_loc_com")
             
             df_p = df_raw_c.copy()
             if sel_emp != "Todas": df_p = df_p[df_p['Empresa'] == sel_emp]
@@ -358,26 +417,32 @@ elif modulo_elegido == "📈 Performance Comercial":
 
             st.divider()
             col_l, col_r = st.columns([1, 2.5])
+            
+            op_v = sorted(df_p['Vendedor'].unique())
+            if st.session_state.f_vend_com not in op_v: st.session_state.f_vend_com = op_v[0] if op_v else None
+            
             with col_l:
-                v_sel = st.selectbox("🔎 Seleccionar Vendedor:", sorted(df_p['Vendedor'].unique()))
-                v_data = df_p[df_p['Vendedor'] == v_sel].iloc[0]
-            with col_r:
-                d1, d2, d3 = st.columns([3, 1, 1])
-                with d1:
-                    st.subheader(v_sel)
-                    st.markdown(f"<span style='color:#e67e22; font-weight:bold;'>{get_ant(v_data['Fecha_Ingreso'], anio_sel)}</span>", unsafe_allow_html=True)
-                    st.caption(f"Canal: {v_data['Canal']} | Empresa: {v_data['Empresa']} | Localidad: {v_data['Localidad']}")
-                d2.metric("META", int(v_data['Objetivo_Mensual']))
-                diff = v_data['Promedio'] - v_data['Objetivo_Mensual']
-                d3.metric("PROM", f"{v_data['Promedio']:.1f}", delta=f"{diff:.1f}", delta_color="normal" if diff >= 0 else "inverse")
+                v_sel = st.selectbox("🔎 Seleccionar Vendedor:", op_v, key="f_vend_com", on_change=sync_filtros_metricas)
+                v_data = df_p[df_p['Vendedor'] == v_sel].iloc[0] if v_sel else None
                 
-                y_vals = [float(v_data[f"{m}_v"]) for m in lista_meses]
-                text_vals = [f"{v:.0f}" for v in y_vals]
-                fig_evol = go.Figure()
-                fig_evol.add_trace(go.Bar(x=lista_meses, y=y_vals, name="Ventas", text=text_vals, textposition='auto', marker_color='#3498db'))
-                fig_evol.add_trace(go.Scatter(x=lista_meses, y=[float(v_data['Objetivo_Mensual'])]*12, mode='lines', name="Objetivo", line=dict(color='red', dash='dot', width=3)))
-                fig_evol.update_layout(height=300, margin=dict(t=20), xaxis=dict(type='category', categoryorder='array', categoryarray=lista_meses))
-                st.plotly_chart(fig_evol, use_container_width=True)
+            with col_r:
+                if v_data is not None:
+                    d1, d2, d3 = st.columns([3, 1, 1])
+                    with d1:
+                        st.subheader(v_sel)
+                        st.markdown(f"<span style='color:#e67e22; font-weight:bold;'>{get_ant(v_data['Fecha_Ingreso'], anio_sel)}</span>", unsafe_allow_html=True)
+                        st.caption(f"Canal: {v_data['Canal']} | Empresa: {v_data['Empresa']} | Localidad: {v_data['Localidad']}")
+                    d2.metric("META", int(v_data['Objetivo_Mensual']))
+                    diff = v_data['Promedio'] - v_data['Objetivo_Mensual']
+                    d3.metric("PROM", f"{v_data['Promedio']:.1f}", delta=f"{diff:.1f}", delta_color="normal" if diff >= 0 else "inverse")
+                    
+                    y_vals = [float(v_data[f"{m}_v"]) for m in lista_meses]
+                    text_vals = [f"{v:.0f}" for v in y_vals]
+                    fig_evol = go.Figure()
+                    fig_evol.add_trace(go.Bar(x=lista_meses, y=y_vals, name="Ventas", text=text_vals, textposition='auto', marker_color='#3498db'))
+                    fig_evol.add_trace(go.Scatter(x=lista_meses, y=[float(v_data['Objetivo_Mensual'])]*12, mode='lines', name="Objetivo", line=dict(color='red', dash='dot', width=3)))
+                    fig_evol.update_layout(height=300, margin=dict(t=20), xaxis=dict(type='category', categoryorder='array', categoryarray=lista_meses))
+                    st.plotly_chart(fig_evol, use_container_width=True)
 
             st.divider()
             g1, g2 = st.columns(2)
@@ -392,14 +457,20 @@ elif modulo_elegido == "📈 Performance Comercial":
 
     elif dimension == "Matriz 9-Box":
         m_f0, m_f1, m_f2, m_f3 = st.columns(4)
-        with m_f0: anio_sel9 = st.selectbox("AÑO", ["2026", "2025"])
+        with m_f0: anio_sel9 = st.selectbox("AÑO", ["2026", "2025"], key="f_anio_9box")
         
         df_raw_c, lista_meses, comp_labels = load_data_comercial(anio_sel9)
         
         if df_raw_c is not None:
             with m_f1: sel_p = st.selectbox("Periodo:", ["Acumulado Anual", "Todos los meses (Promedio)"] + lista_meses)
-            with m_f2: f_emp9 = st.selectbox("Empresa", ["Todas"] + sorted(df_raw_c['Empresa'].dropna().unique()))
-            with m_f3: f_loc9 = st.selectbox("Localidad", ["Todas"] + sorted(df_raw_c['Localidad'].dropna().unique()))
+            
+            op_e9 = sorted(df_raw_c['Empresa'].dropna().unique())
+            if st.session_state.f_emp_9box not in ["Todas"] + op_e9: st.session_state.f_emp_9box = "Todas"
+            with m_f2: f_emp9 = st.selectbox("Empresa", ["Todas"] + op_e9, key="f_emp_9box")
+            
+            op_l9 = sorted(df_raw_c['Localidad'].dropna().unique())
+            if st.session_state.f_loc_9box not in ["Todas"] + op_l9: st.session_state.f_loc_9box = "Todas"
+            with m_f3: f_loc9 = st.selectbox("Localidad", ["Todas"] + op_l9, key="f_loc_9box")
 
             df_9 = df_raw_c.copy()
             if f_emp9 != "Todas": df_9 = df_9[df_9['Empresa'] == f_emp9]
@@ -475,10 +546,11 @@ elif modulo_elegido == "📈 Performance Comercial":
                 
             st.divider()
             
-            opciones_vendedores = ["-- Seleccionar Asesor --"] + sorted(df_9['Vendedor'].unique())
+            op_v9 = ["-- Seleccionar Asesor --"] + sorted(df_9['Vendedor'].unique())
+            if st.session_state.f_vend_9box not in op_v9: st.session_state.f_vend_9box = "-- Seleccionar Asesor --"
             
             st.markdown("### 📋 Ficha Técnica de Desempeño")
-            v_ficha = st.selectbox("🔎 Buscador Manual de Asesor:", opciones_vendedores, index=0)
+            v_ficha = st.selectbox("🔎 Buscador Manual de Asesor:", op_v9, key="f_vend_9box", on_change=sync_filtros_9box)
 
             if v_ficha != "-- Seleccionar Asesor --":
                 v_f = df_9[df_9['Vendedor'] == v_ficha].iloc[0]
