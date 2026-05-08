@@ -26,6 +26,12 @@ st.markdown("""
     .sidebar-header { padding: 15px; text-align: center; border-bottom: 1px solid #34495e; margin-bottom: 20px;}
     .sidebar-header h1 { color: white !important; font-size: 1.1rem; font-weight: 800; letter-spacing: 1.5px; line-height: 1.2; }
     
+    /* --- NUEVO AGREGADO: Títulos del Sidebar en Blanco --- */
+    [data-testid="stSidebar"] .stSelectbox label p, 
+    [data-testid="stSidebar"] div[data-testid="stMarkdownContainer"] > p { 
+        color: #ffffff !important; 
+    }
+    
     /* Botones del Menú Lateral */
     [data-testid="stSidebar"] .stRadio > label { font-size: 14px !important; color: #ffffff !important; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
     [data-testid="stRadio"] div[role="radiogroup"] > label > div:first-child { display: none !important; }
@@ -102,10 +108,8 @@ def load_all_data_desempeno():
 
         df[m['tablero']] = df.apply(calc_prom_anual, axis=1)
         
-        # --- CORRECCIÓN DE ANTIGÜEDAD: Apuntar directo a la Columna J (índice 9) ---
         col_j = df.columns[9]
         df['Fecha_Ingreso'] = pd.to_datetime(df[col_j], dayfirst=True, errors='coerce')
-        # --------------------------------------------------------------------------
 
         cmap_v = {"Verde (>90%)": "#27ae60", "Amarillo (80-90%)": "#f1c40f", "Rojo (<80%)": "#c0392b", "Sin Dato": "#bdc3c7"}
         def get_sem(v):
@@ -177,7 +181,6 @@ def get_ant(fecha, anio_ref):
 # --- 4. BARRA LATERAL UNIFICADA ---
 st.sidebar.markdown('<div class="sidebar-header"><h1>GRUPO CENOA<br>Gestión de Performance</h1></div>', unsafe_allow_html=True)
 
-# --- MODIFICACIÓN DE DISEÑO: Botón reubicado y más pequeño ---
 if st.sidebar.button("🔄 Actualizar Datos", type="secondary"):
     st.cache_data.clear()
     st.sidebar.success("¡Datos actualizados!")
