@@ -81,37 +81,37 @@ st.markdown("""
     .kpi-container h3 { margin: 10px 0 0 0; font-size: 2.5rem; font-weight: 800; color: #f8fafc; line-height: 1; }
     .dotacion-highlight h3 { color: #38bdf8 !important; }
 
-    /* --- Botones de Categoría Gral (MODIFICADOS ESTÉTICA) --- */
-    .main div.stButton > button {
-        border-radius: 8px; 
-        font-weight: 800 !important; /* Letra en negrita extrema */
-        background-color: #1e293b !important; /* Recuadro pintado sólido */
+    /* --- BOTONES DE CATEGORÍA (TARJETAS PREMIUM) --- */
+    section[data-testid="stMain"] div.stButton > button {
+        border-radius: 8px !important; 
+        font-weight: 800 !important; 
+        background-color: #1e293b !important; 
         border: 1px solid #475569 !important; 
-        border-left: 4px solid #38bdf8 !important; /* Raya de color celeste para simetría visual */
-        min-height: 70px !important; /* Altura uniforme para todos */
+        border-left: 4px solid #38bdf8 !important; 
+        min-height: 75px !important; 
         font-size: 0.85rem !important;
-        transition: all 0.3s ease; 
-        display: flex; 
-        flex-direction: column; 
-        align-items: center; 
-        justify-content: center;
+        transition: all 0.3s ease !important; 
+        display: flex !important; 
+        flex-direction: column !important; 
+        align-items: center !important; 
+        justify-content: center !important;
         color: #f8fafc !important; 
-        width: 100%; 
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        width: 100% !important; 
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3) !important;
         white-space: normal !important; 
         line-height: 1.3 !important;
         padding: 5px !important;
     }
-    .main div.stButton > button:hover { 
+    section[data-testid="stMain"] div.stButton > button:hover { 
         background-color: #2d3748 !important;
         border-color: #f97316 !important; 
         border-left: 4px solid #f97316 !important;
         color: #f97316 !important; 
-        box-shadow: 0 0 12px rgba(249, 115, 22, 0.4); 
-        transform: translateY(-2px);
+        box-shadow: 0 0 12px rgba(249, 115, 22, 0.4) !important; 
+        transform: translateY(-2px) !important;
     }
-    .main div.stButton > button:active { 
-        transform: translateY(0px); 
+    section[data-testid="stMain"] div.stButton > button:active { 
+        transform: translateY(0px) !important; 
     }
 
     /* Elementos Comerciales */
@@ -462,7 +462,7 @@ if modulo_elegido == "📊 Gestión de Desempeño":
             
             c_btns = st.columns(5, gap="small")
             for i, (k, v) in enumerate(cats.items()):
-                if c_btns[i].button(f"{k} ({len(v)})", key=f"btn_{k}"): st.session_state.det_sel = k
+                if c_btns[i].button(f"{k} ({len(v)})", key=f"btn_{k}", use_container_width=True): st.session_state.det_sel = k
             
             if st.session_state.det_sel in cats:
                 st.markdown(f"#### 📋 Detalle de Colaboradores: {st.session_state.det_sel}")
@@ -518,7 +518,7 @@ if modulo_elegido == "📊 Gestión de Desempeño":
             
             b_cols = st.columns(5, gap="small")
             for i, (k, v) in enumerate(cats_sub.items()):
-                if b_cols[i].button(f"{k} ({len(v)})", key=f"btn2_{k}"): st.session_state.det_sel = k
+                if b_cols[i].button(f"{k} ({len(v)})", key=f"btn2_{k}", use_container_width=True): st.session_state.det_sel = k
                 
             if st.session_state.det_sel in cats_sub:
                 st.markdown(f"#### 📋 Detalle de Colaboradores: {st.session_state.det_sel}")
