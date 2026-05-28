@@ -466,7 +466,9 @@ if modulo_elegido == "📊 Gestión de Desempeño":
             
             if st.session_state.det_sel in cats:
                 st.markdown(f"#### 📋 Detalle de Colaboradores: {st.session_state.det_sel}")
-                df_show = cats[st.session_state.det_sel].copy()
+                st.info("💡 **Tip:** Haz clic en la fila de un colaborador para ver su gráfico evolutivo.")
+                
+                df_show = cats[st.session_state.det_sel].copy().reset_index(drop=True)
                 df_show['Antigüedad'] = df_show['Fecha_Ingreso'].apply(lambda x: get_ant(x, datetime.now().year))
                 df_show['F. Ingreso'] = df_show['Fecha_Ingreso'].dt.strftime('%d/%m/%Y').fillna("S/D")
                 
@@ -478,8 +480,44 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                 try: df_styled = df_styled.map(color_sem_table, subset=cols_numericas)
                 except AttributeError: df_styled = df_styled.applymap(color_sem_table, subset=cols_numericas)
 
-                st.dataframe(df_styled, use_container_width=True)
-                if st.button("✖️ Cerrar Detalle"): st.session_state.det_sel = None; st.rerun()
+                # TABLA INTERACTIVA
+                event_gral = st.dataframe(df_styled, use_container_width=True, on_select="rerun", selection_mode="single-row", key="df_gral_sel")
+                
+                # GRÁFICO AL HACER CLIC
+                if event_gral.selection.rows:
+                    idx = event_gral.selection.rows[0]
+                    nom_colab = df_show.iloc[idx][m['nombre']]
+                    c_data = df_final[df_final[m['nombre']] == nom_colab].iloc[0]
+                    
+                    st.markdown("<hr style='margin-top: 10px; margin-bottom: 20px; border-color: #38bdf8 !important;'>", unsafe_allow_html=True)
+                    
+                    vals = [float(str(c_data[m_name]).replace('%','').replace(',','.')) if pd.notna(c_data[m_name]) else np.nan for m_name in MESES_NOMBRES]
+                    e1, e2 = st.columns([3, 1])
+                    fecha_ingreso_val = c_data.get('Fecha_Ingreso', pd.NaT)
+                    antiguedad_str = get_ant(fecha_ingreso_val, datetime.now().year) if pd.notna(fecha_ingreso_val) else "S/D"
+                    
+                    with e1: 
+                        st.markdown(f"<h3 style='margin-bottom:5px; color:#f8fafc;'>{nom_colab}</h3>", unsafe_allow_html=True)
+                        st.markdown(f"<p style='color:#94a3b8; font-size:14px;'>{c_data[m['puesto']]} &nbsp;|&nbsp; <b>Área:</b> {c_data[m['area']]} &nbsp;|&nbsp; <b>Frecuencia:</b> <span style='color:#f97316;'>{c_data['Frecuencia']}</span> &nbsp;|&nbsp; <b>Antigüedad:</b> {antiguedad_str} &nbsp;|&nbsp; <b>Localidad:</b> {c_data[m['localidad']]} &nbsp;|&nbsp; {c_data[m['empresa']]}</p>", unsafe_allow_html=True)
+                    
+                    prom_evolucion = np.nanmean(vals)
+                    txt_prom_evolucion = "S/D" if np.isnan(prom_evolucion) else f"{prom_evolucion:.1f}%"
+                    with e2: st.markdown(f'<div class="kpi-container" style="height:100px !important;"><p>Prom. Anual</p><h3 style="color:#10b981;">{txt_prom_evolucion}</h3></div>', unsafe_allow_html=True)
+                    
+                    fig_evol = go.Figure()
+                    fig_evol.add_trace(go.Scatter(
+                        x=MESES_NOMBRES, y=vals, mode='lines+markers+text',
+                        line=dict(color='#38bdf8', width=3),
+                        marker=dict(size=8, color='#38bdf8', line=dict(width=2, color='#111827')),
+                        fill='tozeroy', fillcolor='rgba(56, 189, 248, 0.1)',
+                        text=[f"{v:.0f}%" if not np.isnan(v) else "" for v in vals],
+                        textposition="top center", textfont=dict(color='#f8fafc')
+                    ))
+                    fig_evol.add_shape(type="line", x0=0, y0=100, x1=11, y1=100, line=dict(color="#10b981", width=2, dash="dash"))
+                    fig_evol.update_layout(height=350, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(range=[0, 165], showgrid=True, gridcolor='#1f2937'), xaxis=dict(showgrid=False))
+                    st.plotly_chart(fig_evol, use_container_width=True)
+
+                if st.button("✖️ Cerrar Detalle", key="btn_cerrar_gral"): st.session_state.det_sel = None; st.rerun()
             
             prom_gral = df_final[m["final"]].mean()
             txt_prom_gral = "S/D" if pd.isna(prom_gral) else f"{prom_gral:.1f}%"
@@ -522,7 +560,9 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                 
             if st.session_state.det_sel in cats_sub:
                 st.markdown(f"#### 📋 Detalle de Colaboradores: {st.session_state.det_sel}")
-                df_show_t = cats_sub[st.session_state.det_sel].copy()
+                st.info("💡 **Tip:** Haz clic en la fila de un colaborador para ver su gráfico evolutivo.")
+                
+                df_show_t = cats_sub[st.session_state.det_sel].copy().reset_index(drop=True)
                 df_show_t['Antigüedad'] = df_show_t['Fecha_Ingreso'].apply(lambda x: get_ant(x, datetime.now().year))
                 df_show_t['F. Ingreso'] = df_show_t['Fecha_Ingreso'].dt.strftime('%d/%m/%Y').fillna("S/D")
                 
@@ -534,8 +574,44 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                 try: df_styled_t = df_styled_t.map(color_sem_table, subset=cols_numericas_t)
                 except AttributeError: df_styled_t = df_styled_t.applymap(color_sem_table, subset=cols_numericas_t)
 
-                st.dataframe(df_styled_t, use_container_width=True)
-                if st.button("✖️ Cerrar Lista"): st.session_state.det_sel = None; st.rerun()
+                # TABLA INTERACTIVA
+                event_tab = st.dataframe(df_styled_t, use_container_width=True, on_select="rerun", selection_mode="single-row", key="df_tab_sel")
+                
+                # GRÁFICO AL HACER CLIC
+                if event_tab.selection.rows:
+                    idx = event_tab.selection.rows[0]
+                    nom_colab = df_show_t.iloc[idx][m['nombre']]
+                    c_data = df_final[df_final[m['nombre']] == nom_colab].iloc[0]
+                    
+                    st.markdown("<hr style='margin-top: 10px; margin-bottom: 20px; border-color: #38bdf8 !important;'>", unsafe_allow_html=True)
+                    
+                    vals = [float(str(c_data[m_name]).replace('%','').replace(',','.')) if pd.notna(c_data[m_name]) else np.nan for m_name in MESES_NOMBRES]
+                    e1, e2 = st.columns([3, 1])
+                    fecha_ingreso_val = c_data.get('Fecha_Ingreso', pd.NaT)
+                    antiguedad_str = get_ant(fecha_ingreso_val, datetime.now().year) if pd.notna(fecha_ingreso_val) else "S/D"
+                    
+                    with e1: 
+                        st.markdown(f"<h3 style='margin-bottom:5px; color:#f8fafc;'>{nom_colab}</h3>", unsafe_allow_html=True)
+                        st.markdown(f"<p style='color:#94a3b8; font-size:14px;'>{c_data[m['puesto']]} &nbsp;|&nbsp; <b>Área:</b> {c_data[m['area']]} &nbsp;|&nbsp; <b>Frecuencia:</b> <span style='color:#f97316;'>{c_data['Frecuencia']}</span> &nbsp;|&nbsp; <b>Antigüedad:</b> {antiguedad_str} &nbsp;|&nbsp; <b>Localidad:</b> {c_data[m['localidad']]} &nbsp;|&nbsp; {c_data[m['empresa']]}</p>", unsafe_allow_html=True)
+                    
+                    prom_evolucion = np.nanmean(vals)
+                    txt_prom_evolucion = "S/D" if np.isnan(prom_evolucion) else f"{prom_evolucion:.1f}%"
+                    with e2: st.markdown(f'<div class="kpi-container" style="height:100px !important;"><p>Prom. Anual</p><h3 style="color:#10b981;">{txt_prom_evolucion}</h3></div>', unsafe_allow_html=True)
+                    
+                    fig_evol = go.Figure()
+                    fig_evol.add_trace(go.Scatter(
+                        x=MESES_NOMBRES, y=vals, mode='lines+markers+text',
+                        line=dict(color='#38bdf8', width=3),
+                        marker=dict(size=8, color='#38bdf8', line=dict(width=2, color='#111827')),
+                        fill='tozeroy', fillcolor='rgba(56, 189, 248, 0.1)',
+                        text=[f"{v:.0f}%" if not np.isnan(v) else "" for v in vals],
+                        textposition="top center", textfont=dict(color='#f8fafc')
+                    ))
+                    fig_evol.add_shape(type="line", x0=0, y0=100, x1=11, y1=100, line=dict(color="#10b981", width=2, dash="dash"))
+                    fig_evol.update_layout(height=350, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(range=[0, 165], showgrid=True, gridcolor='#1f2937'), xaxis=dict(showgrid=False))
+                    st.plotly_chart(fig_evol, use_container_width=True)
+
+                if st.button("✖️ Cerrar Lista", key="btn_cerrar_tab"): st.session_state.det_sel = None; st.rerun()
                 
             st.divider()
             if evals > 0:
