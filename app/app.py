@@ -10,12 +10,15 @@ import time
 # --- 1. CONFIGURACIÓN ÚNICA DE PÁGINA ---
 st.set_page_config(page_title="Plataforma RRHH | Grupo Cenoa", layout="wide", page_icon="🏢")
 
+# --- VARIABLES GLOBALES FIJAS ---
+MESES_NOMBRES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+
 # --- VARIABLES DE ESTADO GLOBALES ---
-if 'pagina_desempeno' not in st.session_state: st.session_state.pagina_desempeno = "👤 Desempeño Gral."
+if 'pagina_desempeno' not in st.session_state: st.session_state.pagina_desempeno = "📊 Resumen General"
 if 'det_sel' not in st.session_state: st.session_state.det_sel = None
 if 'cat_filtrada' not in st.session_state: st.session_state.cat_filtrada = None
 
-# --- NUEVAS VARIABLES PARA SINCRONIZACIÓN DE FILTROS ---
+# --- VARIABLES PARA SINCRONIZACIÓN DE FILTROS ---
 if 'f_emp_des' not in st.session_state: st.session_state.f_emp_des = "Todas"
 if 'f_loc_des' not in st.session_state: st.session_state.f_loc_des = "Todas"
 if 'f_are_des' not in st.session_state: st.session_state.f_are_des = "Todas"
@@ -111,23 +114,36 @@ def load_all_data_desempeno():
         for k in ['comp', 'tablero', 'final']:
             clean_str = df[m[k]].astype(str).str.replace('-', '').str.replace('%', '').str.replace(',', '.').str.strip()
             df[m[k]] = pd.to_numeric(clean_str, errors='coerce')
+            
+        # Extraer meses explícitamente para historial y promedios dinámicos
+        for i, mes in enumerate(MESES_NOMBRES):
+            try:
+                df[mes] = pd.to_numeric(df.iloc[:, 15+i].astype(str).str.replace('%','').str.replace(',','.').replace(['-', 'nan', 'None'], np.nan), errors='coerce')
+            except:
+                df[mes] = np.nan
         
         def calc_prom_anual(row):
-            try:
-                vals = [float(str(row.iloc[i]).replace('%','').replace(',','.')) if str(row.iloc[i]) not in ['-','nan','', 'None'] else np.nan for i in range(15,27)]
-                valid_vals = [v for v in vals if not np.isnan(v)]
-                return np.mean(valid_vals) if valid_vals else np.nan
-            except:
-                return np.nan
+            vals = [row[m] for m in MESES_NOMBRES if pd.notna(row[m])]
+            return np.mean(vals) if vals else np.nan
 
         df[m['tablero']] = df.apply(calc_prom_anual, axis=1)
         
+        # Antiguedad (Columna J - Index 9)
         col_j = df.columns[9]
         df['Fecha_Ingreso'] = pd.to_datetime(df[col_j], dayfirst=True, errors='coerce')
 
-        cmap_v = {"Verde (>90%)": "#27ae60", "Amarillo (80-90%)": "#f1c40f", "Rojo (<80%)": "#c0392b", "Sin Dato": "#bdc3c7"}
+        # Frecuencia (Columna AD - Index 29)
+        try:
+            if len(df.columns) > 29:
+                df['Frecuencia'] = df.iloc[:, 29].fillna("S/D")
+            else:
+                df['Frecuencia'] = "S/D"
+        except:
+            df['Frecuencia'] = "S/D"
+
+        cmap_v = {"Verde (>90%)": "#27ae60", "Amarillo (80-90%)": "#f1c40f", "Rojo (<80%)": "#c0392b", "Sin Tablero/ Evaluación": "#bdc3c7"}
         def get_sem(v):
-            if pd.isna(v): return "Sin Dato"
+            if pd.isna(v): return "Sin Tablero/ Evaluación"
             return "Verde (>90%)" if v >= 90 else "Amarillo (80-90%)" if v >= 80 else "Rojo (<80%)"
         
         df['Sem_Comp'] = df[m['comp']].apply(get_sem)
@@ -229,6 +245,11 @@ def sync_filtros_9box():
         st.session_state.f_emp_9box = "Todas"
         st.session_state.f_loc_9box = "Todas"
 
+# --- AUXILIAR DE COLOR HEX ---
+def get_hex_color(v):
+    if pd.isna(v): return "#bdc3c7"
+    return "#27ae60" if v >= 90 else "#f1c40f" if v >= 80 else "#c0392b"
+
 # --- 4. BARRA LATERAL UNIFICADA ---
 st.sidebar.markdown('<div class="sidebar-header"><h1>GRUPO CENOA<br>Gestión de Performance</h1></div>', unsafe_allow_html=True)
 
@@ -251,7 +272,7 @@ if modulo_elegido == "📊 Gestión de Desempeño":
     
     if df_raw_d is not None:
         st.sidebar.markdown("**Menú de Desempeño**")
-        menu_items_d = ["👤 Desempeño Gral.", "🧠 Competencias", "📑 Tableros", "📈 Evolución"]
+        menu_items_d = ["📊 Resumen General", "👤 Desempeño Gral.", "🧠 Competencias", "📑 Tableros", "📈 Evolución"]
         seleccion_d = st.sidebar.radio("Nav", menu_items_d, index=menu_items_d.index(st.session_state.pagina_desempeno), label_visibility="collapsed")
         
         if st.session_state.pagina_desempeno != seleccion_d:
@@ -261,7 +282,7 @@ if modulo_elegido == "📊 Gestión de Desempeño":
 
         st.title("Gestión de Desempeño")
         
-        # FILTROS CON ESTADOS
+        # FILTROS PRINCIPALES
         f_cols = st.columns([1.5, 1.5, 1.5, 2.5, 1.2])
         
         op_emp = ["Todas"] + sorted(df_raw_d[m['empresa']].dropna().unique().tolist())
@@ -290,32 +311,98 @@ if modulo_elegido == "📊 Gestión de Desempeño":
         
         with f_cols[4]:
             st.markdown(f'<div class="kpi-container dotacion-highlight"><p>Dotación</p><h3>{len(df_final)}</h3></div>', unsafe_allow_html=True)
+            
+        # FILTRO DINAMICO DE MESES PARA PROMEDIO DE TABLERO
+        if st.session_state.pagina_desempeno in ["👤 Desempeño Gral.", "📑 Tableros"]:
+            meses_hasta_hoy = MESES_NOMBRES[:datetime.now().month]
+            meses_sel_dinamico = st.multiselect("📅 Filtrar meses para el cálculo promedio de Tableros:", MESES_NOMBRES, default=meses_hasta_hoy)
+            if meses_sel_dinamico:
+                df_final[m['tablero']] = df_final[meses_sel_dinamico].mean(axis=1)
+                def get_sem_din(v):
+                    if pd.isna(v): return "Sin Tablero/ Evaluación"
+                    return "Verde (>90%)" if v >= 90 else "Amarillo (80-90%)" if v >= 80 else "Rojo (<80%)"
+                df_final['Sem_Tab'] = df_final[m['tablero']].apply(get_sem_din)
+
         st.divider()
 
         # LOGICA DE PAGINAS DESEMPEÑO
-        if "Desempeño Gral." in st.session_state.pagina_desempeno:
+        if "Resumen General" in st.session_state.pagina_desempeno:
+            st.markdown("### 📊 Resumen Ejecutivo de Desempeño")
+            
+            meses_validos = [m_name for m_name in MESES_NOMBRES if df_final[m_name].notna().any()]
+            if not meses_validos: meses_validos = [MESES_NOMBRES[0]]
+            
+            mes_sel_res = st.selectbox("📅 Seleccionar Mes de Análisis:", meses_validos, index=len(meses_validos)-1)
+            idx_m = MESES_NOMBRES.index(mes_sel_res)
+            
+            prom_mes = df_final[mes_sel_res].mean()
+            delta = None
+            if idx_m > 0:
+                mes_ant = MESES_NOMBRES[idx_m-1]
+                prom_ant = df_final[mes_ant].mean()
+                delta = prom_mes - prom_ant
+                
+            r1, r2, r3 = st.columns(3)
+            with r1:
+                st.metric(f"Promedio ({mes_sel_res})", f"{prom_mes:.1f}%" if pd.notna(prom_mes) else "S/D", f"{delta:.1f}%" if pd.notna(delta) else None)
+            with r2:
+                prom_ytd = df_final[MESES_NOMBRES[:idx_m+1]].mean(axis=1).mean()
+                st.metric(f"Promedio Acumulado (Ene - {mes_sel_res})", f"{prom_ytd:.1f}%" if pd.notna(prom_ytd) else "S/D")
+                
+            st.markdown("---")
+            
+            # Grafico Evolutivo
+            prom_evol = [df_final[m_name].mean() for m_name in meses_validos]
+            colores_evol = [get_hex_color(v) for v in prom_evol]
+            
+            fig_ev = go.Figure(go.Bar(x=meses_validos, y=prom_evol, marker_color=colores_evol, text=[f"{v:.1f}%" if pd.notna(v) else "" for v in prom_evol], textposition='auto'))
+            fig_ev.update_layout(title="Evolución Promedios Generales Mensuales", height=350, template="plotly_white", yaxis=dict(range=[0, 110]))
+            st.plotly_chart(fig_ev, use_container_width=True)
+            
+            st.markdown("---")
+            cr1, cr2 = st.columns(2)
+            with cr1:
+                st.markdown("**Ranking Promedio por Empresa (Mes Seleccionado)**")
+                df_r_emp = df_final.groupby(m['empresa'])[mes_sel_res].mean().reset_index(name='Promedio').dropna().sort_values('Promedio', ascending=True)
+                fig_re = px.bar(df_r_emp, x='Promedio', y=m['empresa'], orientation='h', text_auto='.1f', color='Promedio', color_continuous_scale=['#c0392b', '#f1c40f', '#27ae60'])
+                fig_re.update_layout(height=300, showlegend=False)
+                st.plotly_chart(fig_re, use_container_width=True)
+            with cr2:
+                st.markdown("**Ranking Promedio por Área (Mes Seleccionado)**")
+                df_r_are = df_final.groupby(m['area'])[mes_sel_res].mean().reset_index(name='Promedio').dropna().sort_values('Promedio', ascending=True).tail(10)
+                fig_ra = px.bar(df_r_are, x='Promedio', y=m['area'], orientation='h', text_auto='.1f', color='Promedio', color_continuous_scale=['#c0392b', '#f1c40f', '#27ae60'])
+                fig_ra.update_layout(height=300, showlegend=False)
+                st.plotly_chart(fig_ra, use_container_width=True)
+
+        elif "Desempeño Gral." in st.session_state.pagina_desempeno:
             cats = {"ESTRELLA": df_final[df_final[m['final']] >= 90], "PROFESIONAL": df_final[(df_final[m['final']] >= 80) & (df_final[m['final']] < 90)], "CLAVE": df_final[(df_final[m['final']] >= 70) & (df_final[m['final']] < 80)], "ENIGMA": df_final[(df_final[m['final']] >= 60) & (df_final[m['final']] < 70)], "RIESGO": df_final[df_final[m['final']] < 60]}
             c_btns = st.columns(5)
             for i, (k, v) in enumerate(cats.items()):
                 if c_btns[i].button(f"{k} ({len(v)})", key=f"btn_{k}"): st.session_state.det_sel = k
+            
             if st.session_state.det_sel in cats:
-                st.dataframe(cats[st.session_state.det_sel][[m['nombre'], m['puesto'], m['final']]], use_container_width=True)
+                df_show = cats[st.session_state.det_sel].copy()
+                df_show['Antigüedad'] = df_show['Fecha_Ingreso'].apply(lambda x: get_ant(x, datetime.now().year))
+                df_show['F. Ingreso'] = df_show['Fecha_Ingreso'].dt.strftime('%d/%m/%Y').fillna("S/D")
+                
+                meses_hist = [mes for mes in MESES_NOMBRES if mes in df_show.columns]
+                cols_mostrar = [m['nombre'], m['puesto'], 'F. Ingreso', 'Antigüedad'] + meses_hist + [m['final']]
+                
+                st.dataframe(df_show[cols_mostrar], use_container_width=True)
                 if st.button("✖️ Cerrar Detalle"): st.session_state.det_sel = None; st.rerun()
             
             prom_gral = df_final[m["final"]].mean()
             txt_prom_gral = "S/D" if pd.isna(prom_gral) else f"{prom_gral:.1f}%"
-            st.markdown(f'<div style="background-color:#e1f5fe; padding:15px; border-radius:10px; border-left:5px solid #0288d1; margin-bottom:20px;">Promedio de Desempeño: <b>{txt_prom_gral}</b></div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="background-color:#e1f5fe; padding:15px; border-radius:10px; border-left:5px solid #0288d1; margin-bottom:20px;">Promedio de Desempeño Final: <b>{txt_prom_gral}</b></div>', unsafe_allow_html=True)
             
             df_grafico = df_final.dropna(subset=[m['comp'], m['tablero']])
             if not df_grafico.empty:
                 fig_bub = px.scatter(df_grafico, x=m['tablero'], y=m['comp'], color=m['area'], text='Inic', hover_name=m['nombre'], height=600, template="plotly_white")
-                fig_bub.update_layout(xaxis=dict(range=[-5, 105], title="% Acumulado Tablero"), yaxis=dict(range=[-5, 105], title="% Competencias"))
+                fig_bub.update_layout(xaxis=dict(range=[-5, 105], title="% Tablero (Dinámico)"), yaxis=dict(range=[-5, 105], title="% Competencias"))
                 fig_bub.update_traces(textposition='middle center', textfont=dict(size=10, color='white', family="Arial Black"), marker=dict(size=35, opacity=0.8, line=dict(width=1, color='white')))
                 st.plotly_chart(fig_bub, use_container_width=True)
             else:
-                st.warning("⚠️ El gráfico no se puede mostrar: Faltan notas de Tablero o Competencias para los colaboradores filtrados, o los datos tienen errores en el Excel.")
-                st.write("🔍 **Diagnóstico de datos (Primeros resultados):**")
-                st.dataframe(df_final[[m['nombre'], m['comp'], m['tablero'], m['final']]].head(10), use_container_width=True)
+                st.warning("⚠️ El gráfico no se puede mostrar: Faltan notas de Tablero o Competencias para los colaboradores filtrados.")
 
         elif st.session_state.pagina_desempeno in ["🧠 Competencias", "📑 Tableros"]:
             is_comp = "Competencias" in st.session_state.pagina_desempeno
@@ -326,6 +413,9 @@ if modulo_elegido == "📊 Gestión de Desempeño":
             prom_seccion = df_final[col_d].mean()
             txt_prom_seccion = "S/D" if pd.isna(prom_seccion) else f"{prom_seccion:.1f}%"
             
+            if not is_comp and f_nom != "Todos":
+                st.info(f"📌 Frecuencia de Evaluación de {f_nom}: **{df_final.iloc[0]['Frecuencia']}**")
+            
             q = st.columns(4)
             with q[0]: st.markdown(f'<div class="kpi-container"><p>Total</p><h3>{len(df_final)}</h3></div>', unsafe_allow_html=True)
             with q[1]: st.markdown(f'<div class="kpi-container"><p>Evaluados</p><h3 style="color:#3498db;">{evals}</h3></div>', unsafe_allow_html=True)
@@ -333,12 +423,18 @@ if modulo_elegido == "📊 Gestión de Desempeño":
             with q[3]: st.markdown(f'<div class="kpi-container"><p>Promedio %</p><h3 style="color:#27ae60;">{txt_prom_seccion}</h3></div>', unsafe_allow_html=True)
             
             st.markdown("<br>", unsafe_allow_html=True)
-            cats_sub = {"CRÍTICO": df_final[df_final[col_d] < 70], "ESPERADO": df_final[(df_final[col_d] >= 70) & (df_final[col_d] < 85)], "ALTO": df_final[(df_final[col_d] >= 85) & (df_final[col_d] < 95)], "SOBRESALIENTE": df_final[df_final[col_d] >= 95], "SIN DATO": df_final[df_final[col_d].isna()]}
+            cats_sub = {"CRÍTICO": df_final[df_final[col_d] < 70], "ESPERADO": df_final[(df_final[col_d] >= 70) & (df_final[col_d] < 85)], "ALTO": df_final[(df_final[col_d] >= 85) & (df_final[col_d] < 95)], "SOBRESALIENTE": df_final[df_final[col_d] >= 95], "SIN TABLERO/ EVALUACIÓN": df_final[df_final[col_d].isna()]}
             b_cols = st.columns(5)
             for i, (k, v) in enumerate(cats_sub.items()):
                 if b_cols[i].button(f"{k} ({len(v)})", key=f"btn2_{k}"): st.session_state.det_sel = k
+                
             if st.session_state.det_sel in cats_sub:
-                st.dataframe(cats_sub[st.session_state.det_sel][[m['nombre'], m['empresa'], col_d]], use_container_width=True)
+                df_show_t = cats_sub[st.session_state.det_sel].copy()
+                df_show_t['Antigüedad'] = df_show_t['Fecha_Ingreso'].apply(lambda x: get_ant(x, datetime.now().year))
+                df_show_t['F. Ingreso'] = df_show_t['Fecha_Ingreso'].dt.strftime('%d/%m/%Y').fillna("S/D")
+                meses_hist = [mes for mes in MESES_NOMBRES if mes in df_show_t.columns]
+                
+                st.dataframe(df_show_t[[m['nombre'], m['empresa'], 'F. Ingreso', 'Antigüedad'] + meses_hist + [col_d]], use_container_width=True)
                 if st.button("✖️ Cerrar Lista"): st.session_state.det_sel = None; st.rerun()
                 
             st.divider()
@@ -349,8 +445,7 @@ if modulo_elegido == "📊 Gestión de Desempeño":
         elif "Evolución" in st.session_state.pagina_desempeno:
             if f_nom != "Todos":
                 c_data = df_final.iloc[0]
-                meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
-                vals = [float(str(c_data.iloc[i]).replace('%','').replace(',','.')) if str(c_data.iloc[i]) not in ['-','nan',''] else np.nan for i in range(15,27)]
+                vals = [float(str(c_data[m_name]).replace('%','').replace(',','.')) if pd.notna(c_data[m_name]) else np.nan for m_name in MESES_NOMBRES]
                 
                 e1, e2 = st.columns([3, 1])
                 
@@ -359,13 +454,13 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                 
                 with e1: 
                     st.title(f_nom)
-                    st.caption(f"{c_data[m['puesto']]} | Área: {c_data[m['area']]} | Antigüedad: {antiguedad_str} | {c_data[m['empresa']]}")
+                    st.caption(f"{c_data[m['puesto']]} | Área: {c_data[m['area']]} | Frecuencia: {c_data['Frecuencia']} | Antigüedad: {antiguedad_str} | {c_data[m['empresa']]}")
                 
                 prom_evolucion = np.nanmean(vals)
                 txt_prom_evolucion = "S/D" if np.isnan(prom_evolucion) else f"{prom_evolucion:.1f}%"
                 with e2: st.markdown(f'<div class="kpi-container"><p>Prom. Anual</p><h3 style="color:#27ae60;">{txt_prom_evolucion}</h3></div>', unsafe_allow_html=True)
                 
-                fig_evol = go.Figure(go.Scatter(x=meses, y=vals, mode='lines+markers+text', line=dict(color='#3498db', width=4), text=[f"{v:.0f}%" if not np.isnan(v) else "" for v in vals], textposition="top center"))
+                fig_evol = go.Figure(go.Scatter(x=MESES_NOMBRES, y=vals, mode='lines+markers+text', line=dict(color='#3498db', width=4), text=[f"{v:.0f}%" if not np.isnan(v) else "" for v in vals], textposition="top center"))
                 fig_evol.add_shape(type="line", x0=0, y0=100, x1=11, y1=100, line=dict(color="#27ae60", width=2, dash="dash"))
                 st.plotly_chart(fig_evol.update_layout(height=450, template="plotly_white", yaxis=dict(range=[0, 165])), use_container_width=True)
             else: st.info("👈 Seleccione un colaborador en los filtros superiores.")
