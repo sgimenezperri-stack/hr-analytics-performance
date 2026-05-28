@@ -8,7 +8,7 @@ from datetime import datetime
 import time
 
 # --- 1. CONFIGURACIÓN ÚNICA DE PÁGINA ---
-st.set_page_config(page_title="Plataforma RRHH | Grupo Cenoa", layout="wide", page_icon="🏢")
+st.set_page_config(page_title="Plataforma RRHH | Grupo Cenoa", layout="wide", page_icon="🏢", initial_sidebar_state="expanded")
 
 # --- VARIABLES GLOBALES FIJAS ---
 MESES_NOMBRES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
@@ -32,63 +32,75 @@ if 'f_emp_9box' not in st.session_state: st.session_state.f_emp_9box = "Todas"
 if 'f_loc_9box' not in st.session_state: st.session_state.f_loc_9box = "Todas"
 if 'f_vend_9box' not in st.session_state: st.session_state.f_vend_9box = "-- Seleccionar Asesor --"
 
-# --- 2. CSS UNIFICADO ---
+# --- 2. CSS UNIFICADO (NUEVO DISEÑO DARK & NEÓN) ---
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap');
-    html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color: #f4f7f6; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+    
+    /* Fondo principal y fuentes */
+    .stApp { background-color: #0e121a; font-family: 'Inter', sans-serif; }
+    h1, h2, h3, h4 { color: #f8fafc !important; font-weight: 800; }
+    p, span, div { color: #cbd5e1; }
 
     /* Sidebar Profesional */
-    [data-testid="stSidebar"] { background-color: #1e272e !important; min-width: 320px !important; }
-    .sidebar-header { padding: 15px; text-align: center; border-bottom: 1px solid #34495e; margin-bottom: 20px;}
-    .sidebar-header h1 { color: white !important; font-size: 1.1rem; font-weight: 800; letter-spacing: 1.5px; line-height: 1.2; }
+    [data-testid="stSidebar"] { background-color: #111827 !important; border-right: 1px solid #1f2937; }
+    .sidebar-header { padding: 15px; text-align: center; border-bottom: 1px solid #1f2937; margin-bottom: 20px;}
+    .sidebar-header h1 { color: #ffffff !important; font-size: 1.1rem; font-weight: 800; letter-spacing: 1.5px; line-height: 1.2; text-transform: uppercase; }
     
-    /* --- Títulos del Sidebar en Blanco --- */
+    /* Títulos del Sidebar en Blanco */
     [data-testid="stSidebar"] .stSelectbox label p, 
-    [data-testid="stSidebar"] div[data-testid="stMarkdownContainer"] > p { 
-        color: #ffffff !important; 
-    }
+    [data-testid="stSidebar"] div[data-testid="stMarkdownContainer"] > p { color: #94a3b8 !important; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px;}
     
-    /* --- BOTÓN ACTUALIZAR EN NEGRO --- */
-    [data-testid="stSidebar"] div.stButton > button p { color: #000000 !important; font-weight: 800 !important; }
+    /* BOTÓN ACTUALIZAR */
+    [data-testid="stSidebar"] div.stButton > button { background-color: #1f2937; border: 1px solid #374151; transition: 0.3s; }
+    [data-testid="stSidebar"] div.stButton > button:hover { border-color: #f97316; background-color: #2d3748;}
+    [data-testid="stSidebar"] div.stButton > button p { color: #ffffff !important; font-weight: 600 !important; }
 
     /* Botones del Menú Lateral */
-    [data-testid="stSidebar"] .stRadio > label { font-size: 14px !important; color: #ffffff !important; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+    [data-testid="stSidebar"] .stRadio > label { margin-bottom: 10px; }
     [data-testid="stRadio"] div[role="radiogroup"] > label > div:first-child { display: none !important; }
     [data-testid="stRadio"] div[role="radiogroup"] label {
-        padding: 12px 20px !important; background-color: #2f3640 !important;
-        border-radius: 8px !important; margin-bottom: 8px !important; transition: 0.3s;
-        border-left: 5px solid transparent; cursor: pointer;
+        padding: 12px 20px !important; background-color: transparent !important;
+        border-radius: 6px !important; margin-bottom: 4px !important; transition: 0.2s;
+        border-left: 4px solid transparent; cursor: pointer; color: #94a3b8;
     }
-    [data-testid="stRadio"] label p { color: #dee2e6 !important; font-size: 0.9rem !important; font-weight: 600 !important; }
-    [data-testid="stRadio"] div[role="radiogroup"] label:hover { background-color: #353b48 !important; border-left: 5px solid #e67e22 !important; }
-    [data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] { background-color: #e67e22 !important; border-left: 5px solid #d35400 !important; }
-    [data-testid="stRadio"] label[data-checked="true"] p { color: white !important; font-weight: 700 !important; }
+    [data-testid="stRadio"] label p { color: #94a3b8 !important; font-size: 0.95rem !important; font-weight: 600 !important; }
+    [data-testid="stRadio"] div[role="radiogroup"] label:hover { background-color: #1f2937 !important; border-left: 4px solid #475569 !important; }
+    [data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] { background-color: #1e293b !important; border-left: 4px solid #f97316 !important; }
+    [data-testid="stRadio"] label[data-checked="true"] p { color: #ffffff !important; font-weight: 700 !important; }
 
-    /* --- CUADRANTES KPI Y DOTACIÓN --- */
+    /* --- TARJETAS Y KPI --- */
     .kpi-container {
-        background: white; border-radius: 12px; padding: 15px; text-align: center; 
-        border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        background-color: #111827; border-radius: 12px; padding: 20px; text-align: center; 
+        border: 1px solid #1f2937; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
         display: flex; flex-direction: column; justify-content: center; align-items: center;
-        height: 120px !important; width: 100%;
+        height: 130px !important; width: 100%; transition: transform 0.2s;
     }
-    .kpi-container p { margin: 0; font-size: 0.75rem; font-weight: 700; color: #718096; text-transform: uppercase; letter-spacing: 1px; }
-    .kpi-container h3 { margin: 5px 0 0 0; font-size: 2.2rem; font-weight: 800; color: #1a202c; line-height: 1; }
-    .dotacion-highlight h3 { color: #3498db !important; }
+    .kpi-container:hover { transform: translateY(-3px); border-color: #374151; }
+    .kpi-container p { margin: 0; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
+    .kpi-container h3 { margin: 10px 0 0 0; font-size: 2.5rem; font-weight: 800; color: #f8fafc; line-height: 1; }
+    .dotacion-highlight h3 { color: #38bdf8 !important; }
 
-    /* Botones de Categoría */
+    /* Botones de Categoría Gral */
     .main div.stButton > button {
-        border-radius: 10px; font-weight: 700; background-color: white; 
-        border: 1px solid #e2e8f0; height: 60px !important; font-size: 0.85rem !important;
+        border-radius: 8px; font-weight: 600; background-color: #111827; 
+        border: 1px solid #1f2937; height: 50px !important; font-size: 0.85rem !important;
         transition: all 0.2s; display: flex; align-items: center; justify-content: center;
-        color: #2c3e50; width: 100%;
+        color: #e2e8f0; width: 100%;
     }
-    .main div.stButton > button:hover { border-color: #e67e22; color: #e67e22; background-color: #fdf2e9; box-shadow: 0px 4px 10px rgba(0,0,0,0.08);}
+    .main div.stButton > button:hover { border-color: #f97316; color: #f97316; box-shadow: 0 0 15px rgba(249, 115, 22, 0.1);}
 
     /* Elementos Comerciales */
-    [data-testid="stMetric"] { background-color: #ffffff; border-radius: 10px; padding: 15px; box-shadow: 2px 2px 10px rgba(0,0,0,0.05); }
-    .metric-card { background-color: #ffffff; border-radius: 10px; padding: 20px; text-align: center; border: 1px solid #e0e0e0; box-shadow: 2px 2px 8px rgba(0,0,0,0.05); }
-    .perfil-asesor { background-color: #ffffff; padding: 15px 20px; border-radius: 10px; border-left: 5px solid #e67e22; margin-bottom: 20px; box-shadow: 2px 2px 8px rgba(0,0,0,0.05);}
+    .metric-card { background-color: #111827; border-radius: 12px; padding: 20px; text-align: center; border: 1px solid #1f2937; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+    .metric-card p { color: #64748b; font-size: 0.8rem; font-weight: 700; letter-spacing: 1px; }
+    .metric-card h2 { color: #f8fafc; font-size: 2.2rem; font-weight: 800; margin: 5px 0;}
+    
+    .perfil-asesor { background-color: #111827; padding: 20px; border-radius: 12px; border-left: 4px solid #f97316; margin-bottom: 20px; border-top: 1px solid #1f2937; border-right: 1px solid #1f2937; border-bottom: 1px solid #1f2937;}
+    .perfil-asesor h3 { color: #f8fafc !important; }
+    .perfil-asesor p { color: #94a3b8 !important; }
+    
+    /* Separadores */
+    hr { border-color: #1f2937 !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -141,7 +153,7 @@ def load_all_data_desempeno():
         except:
             df['Frecuencia'] = "S/D"
 
-        cmap_v = {"Verde (>90%)": "#27ae60", "Amarillo (80-90%)": "#f1c40f", "Rojo (<80%)": "#c0392b", "Sin Tablero/ Evaluación": "#bdc3c7"}
+        cmap_v = {"Verde (>90%)": "#10b981", "Amarillo (80-90%)": "#f59e0b", "Rojo (<80%)": "#ef4444", "Sin Tablero/ Evaluación": "#374151"}
         def get_sem(v):
             if pd.isna(v): return "Sin Tablero/ Evaluación"
             return "Verde (>90%)" if v >= 90 else "Amarillo (80-90%)" if v >= 80 else "Rojo (<80%)"
@@ -207,6 +219,10 @@ def get_ant(fecha, anio_ref):
     elif m > 0: return f"{m} meses"
     else: return "Menos de 1 mes"
 
+def get_hex_color(v):
+    if pd.isna(v): return "#374151"
+    return "#10b981" if v >= 90 else "#f59e0b" if v >= 80 else "#ef4444"
+
 # --- FUNCIONES DE SINCRONIZACIÓN DE FILTROS ---
 def sync_filtros_desempeno():
     if st.session_state.f_nom_des != "Todos":
@@ -245,13 +261,8 @@ def sync_filtros_9box():
         st.session_state.f_emp_9box = "Todas"
         st.session_state.f_loc_9box = "Todas"
 
-# --- AUXILIAR DE COLOR HEX ---
-def get_hex_color(v):
-    if pd.isna(v): return "#bdc3c7"
-    return "#27ae60" if v >= 90 else "#f1c40f" if v >= 80 else "#c0392b"
-
 # --- 4. BARRA LATERAL UNIFICADA ---
-st.sidebar.markdown('<div class="sidebar-header"><h1>GRUPO CENOA<br>Gestión de Performance</h1></div>', unsafe_allow_html=True)
+st.sidebar.markdown('<div class="sidebar-header"><h1 style="color:#ffffff;">GRUPO CENOA<br><span style="color:#f97316; font-size:0.8rem;">Gestión de Performance</span></h1></div>', unsafe_allow_html=True)
 
 if st.sidebar.button("🔄 Actualizar Datos", type="secondary"):
     st.cache_data.clear()
@@ -280,7 +291,8 @@ if modulo_elegido == "📊 Gestión de Desempeño":
             st.session_state.det_sel = None
             st.rerun()
 
-        st.title("Gestión de Desempeño")
+        st.markdown(f"<h2>{st.session_state.pagina_desempeno[2:]} <span style='color:#f97316;'>| Grupo Cenoa</span></h2>", unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
         
         # FILTROS PRINCIPALES
         f_cols = st.columns([1.5, 1.5, 1.5, 2.5, 1.2])
@@ -310,7 +322,7 @@ if modulo_elegido == "📊 Gestión de Desempeño":
         df_final = df_f if f_nom == "Todos" else df_f[df_f[m['nombre']] == f_nom]
         
         with f_cols[4]:
-            st.markdown(f'<div class="kpi-container dotacion-highlight"><p>Dotación</p><h3>{len(df_final)}</h3></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="kpi-container dotacion-highlight" style="height:70px !important; padding:5px;"><p style="font-size:0.65rem;">Dotación</p><h3 style="margin-top:0px; font-size:1.8rem;">{len(df_final)}</h3></div>', unsafe_allow_html=True)
             
         # FILTRO DINAMICO DE MESES PARA PROMEDIO DE TABLERO
         if st.session_state.pagina_desempeno in ["👤 Desempeño Gral.", "📑 Tableros"]:
@@ -323,57 +335,92 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                     return "Verde (>90%)" if v >= 90 else "Amarillo (80-90%)" if v >= 80 else "Rojo (<80%)"
                 df_final['Sem_Tab'] = df_final[m['tablero']].apply(get_sem_din)
 
-        st.divider()
+        st.markdown("<hr style='margin-top: 10px; margin-bottom: 20px;'>", unsafe_allow_html=True)
 
-        # LOGICA DE PAGINAS DESEMPEÑO
+        # ================== RESUMEN GENERAL ==================
         if "Resumen General" in st.session_state.pagina_desempeno:
-            st.markdown("### 📊 Resumen Ejecutivo de Desempeño")
-            
             meses_validos = [m_name for m_name in MESES_NOMBRES if df_final[m_name].notna().any()]
             if not meses_validos: meses_validos = [MESES_NOMBRES[0]]
             
-            mes_sel_res = st.selectbox("📅 Seleccionar Mes de Análisis:", meses_validos, index=len(meses_validos)-1)
+            sel_col, _ = st.columns([1, 4])
+            with sel_col:
+                mes_sel_res = st.selectbox("📅 Mes de Análisis:", meses_validos, index=len(meses_validos)-1)
+                
             idx_m = MESES_NOMBRES.index(mes_sel_res)
             
             prom_mes = df_final[mes_sel_res].mean()
+            prom_ytd = df_final[MESES_NOMBRES[:idx_m+1]].mean(axis=1).mean()
+            
             delta = None
+            mes_ant = "Mes anterior"
+            prom_ant = 0
             if idx_m > 0:
                 mes_ant = MESES_NOMBRES[idx_m-1]
                 prom_ant = df_final[mes_ant].mean()
                 delta = prom_mes - prom_ant
+            
+            # --- Diseño tipo panel central ---
+            c1, c2 = st.columns([1.2, 2.5])
+            
+            # Tarjeta Izquierda
+            with c1:
+                color_d = "#10b981" if delta is not None and delta >= 0 else "#ef4444" if delta is not None else "#64748b"
+                signo = "+" if delta is not None and delta > 0 else ""
+                delta_str = f"{signo}{delta:.2f} pts" if delta is not None else "S/D"
                 
-            r1, r2, r3 = st.columns(3)
-            with r1:
-                st.metric(f"Promedio ({mes_sel_res})", f"{prom_mes:.1f}%" if pd.notna(prom_mes) else "S/D", f"{delta:.1f}%" if pd.notna(delta) else None)
-            with r2:
-                prom_ytd = df_final[MESES_NOMBRES[:idx_m+1]].mean(axis=1).mean()
-                st.metric(f"Promedio Acumulado (Ene - {mes_sel_res})", f"{prom_ytd:.1f}%" if pd.notna(prom_ytd) else "S/D")
+                st.markdown(f"""
+                <div style='background: linear-gradient(145deg, #111827 0%, #1a202c 100%); border: 1px solid #2d3748; border-radius: 12px; padding: 24px; height: 100%; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);'>
+                    <p style='color: #64748b; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; margin-bottom: 8px;'>// INDICADOR GENERAL</p>
+                    <p style='color: #cbd5e1; font-size: 14px; margin-bottom: 20px;'>Calificación promedio del Grupo en {mes_sel_res.upper()}</p>
+                    <h1 style='color: #10b981; font-size: 4.5rem; margin: 0; line-height: 1; font-weight: 800;'>{prom_mes:.2f}<span style='font-size: 2rem; color: #10b981;'>%</span></h1>
+                    <div style='margin-top: 25px; display: flex; align-items: center;'>
+                        <span style='background-color: {color_d}20; color: {color_d}; padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 13px;'>{delta_str}</span>
+                        <span style='color: #94a3b8; font-size: 13px; margin-left: 10px;'>vs. {mes_ant} ({prom_ant:.2f}%)</span>
+                    </div>
+                    <div style='margin-top: 30px; border-top: 1px dashed #2d3748; padding-top: 15px;'>
+                        <p style='color: #64748b; font-size: 11px; font-weight: 800; letter-spacing: 1px; margin:0;'>PROMEDIO ACUMULADO (YTD)</p>
+                        <p style='color: #f8fafc; font-size: 18px; font-weight: 700; margin:0;'>{prom_ytd:.2f}%</p>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
                 
-            st.markdown("---")
+            # Grafico Derecha
+            with c2:
+                prom_evol = [df_final[m_name].mean() for m_name in meses_validos]
+                
+                fig_ev = go.Figure()
+                fig_ev.add_trace(go.Scatter(
+                    x=meses_validos, y=prom_evol, mode='lines+markers+text',
+                    line=dict(color='#f97316', width=3),
+                    marker=dict(size=8, color='#f97316', line=dict(width=2, color='#111827')),
+                    fill='tozeroy', fillcolor='rgba(249, 115, 22, 0.1)',
+                    text=[f"{v:.1f}%" if pd.notna(v) else "" for v in prom_evol],
+                    textposition="top center", textfont=dict(color='#10b981', size=11, family="Inter")
+                ))
+                fig_ev.update_layout(
+                    title=dict(text="EVOLUCIÓN MENSUAL · CENOA", font=dict(color='#94a3b8', size=13)),
+                    template="plotly_dark", paper_bgcolor='rgba(17, 24, 39, 0.8)', plot_bgcolor='rgba(0,0,0,0)',
+                    yaxis=dict(showgrid=True, gridcolor='#1f2937', range=[min(prom_evol)-5 if prom_evol and pd.notna(min(prom_evol)) else 0, 105]),
+                    xaxis=dict(showgrid=False), margin=dict(l=20, r=20, t=50, b=20), height=320,
+                )
+                st.plotly_chart(fig_ev, use_container_width=True)
             
-            # Grafico Evolutivo
-            prom_evol = [df_final[m_name].mean() for m_name in meses_validos]
-            colores_evol = [get_hex_color(v) for v in prom_evol]
-            
-            fig_ev = go.Figure(go.Bar(x=meses_validos, y=prom_evol, marker_color=colores_evol, text=[f"{v:.1f}%" if pd.notna(v) else "" for v in prom_evol], textposition='auto'))
-            fig_ev.update_layout(title="Evolución Promedios Generales Mensuales", height=350, template="plotly_white", yaxis=dict(range=[0, 110]))
-            st.plotly_chart(fig_ev, use_container_width=True)
-            
-            st.markdown("---")
+            st.markdown("<br>", unsafe_allow_html=True)
             cr1, cr2 = st.columns(2)
             with cr1:
-                st.markdown("**Ranking Promedio por Empresa (Mes Seleccionado)**")
+                st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px;'>// DESEMPEÑO POR EMPRESA</p>", unsafe_allow_html=True)
                 df_r_emp = df_final.groupby(m['empresa'])[mes_sel_res].mean().reset_index(name='Promedio').dropna().sort_values('Promedio', ascending=True)
-                fig_re = px.bar(df_r_emp, x='Promedio', y=m['empresa'], orientation='h', text_auto='.1f', color='Promedio', color_continuous_scale=['#c0392b', '#f1c40f', '#27ae60'])
-                fig_re.update_layout(height=300, showlegend=False)
+                fig_re = px.bar(df_r_emp, x='Promedio', y=m['empresa'], orientation='h', text_auto='.1f', color='Promedio', color_continuous_scale=['#ef4444', '#f59e0b', '#10b981'])
+                fig_re.update_layout(height=300, showlegend=False, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(showgrid=True, gridcolor='#1f2937'), yaxis_title="")
                 st.plotly_chart(fig_re, use_container_width=True)
             with cr2:
-                st.markdown("**Ranking Promedio por Área (Mes Seleccionado)**")
+                st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px;'>// DESEMPEÑO POR ÁREA (TOP 10)</p>", unsafe_allow_html=True)
                 df_r_are = df_final.groupby(m['area'])[mes_sel_res].mean().reset_index(name='Promedio').dropna().sort_values('Promedio', ascending=True).tail(10)
-                fig_ra = px.bar(df_r_are, x='Promedio', y=m['area'], orientation='h', text_auto='.1f', color='Promedio', color_continuous_scale=['#c0392b', '#f1c40f', '#27ae60'])
-                fig_ra.update_layout(height=300, showlegend=False)
+                fig_ra = px.bar(df_r_are, x='Promedio', y=m['area'], orientation='h', text_auto='.1f', color='Promedio', color_continuous_scale=['#ef4444', '#f59e0b', '#10b981'])
+                fig_ra.update_layout(height=300, showlegend=False, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(showgrid=True, gridcolor='#1f2937'), yaxis_title="")
                 st.plotly_chart(fig_ra, use_container_width=True)
 
+        # ================== DESEMPEÑO GRAL ==================
         elif "Desempeño Gral." in st.session_state.pagina_desempeno:
             cats = {"ESTRELLA": df_final[df_final[m['final']] >= 90], "PROFESIONAL": df_final[(df_final[m['final']] >= 80) & (df_final[m['final']] < 90)], "CLAVE": df_final[(df_final[m['final']] >= 70) & (df_final[m['final']] < 80)], "ENIGMA": df_final[(df_final[m['final']] >= 60) & (df_final[m['final']] < 70)], "RIESGO": df_final[df_final[m['final']] < 60]}
             c_btns = st.columns(5)
@@ -381,6 +428,7 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                 if c_btns[i].button(f"{k} ({len(v)})", key=f"btn_{k}"): st.session_state.det_sel = k
             
             if st.session_state.det_sel in cats:
+                st.markdown(f"#### 📋 Detalle de Colaboradores: {st.session_state.det_sel}")
                 df_show = cats[st.session_state.det_sel].copy()
                 df_show['Antigüedad'] = df_show['Fecha_Ingreso'].apply(lambda x: get_ant(x, datetime.now().year))
                 df_show['F. Ingreso'] = df_show['Fecha_Ingreso'].dt.strftime('%d/%m/%Y').fillna("S/D")
@@ -393,17 +441,18 @@ if modulo_elegido == "📊 Gestión de Desempeño":
             
             prom_gral = df_final[m["final"]].mean()
             txt_prom_gral = "S/D" if pd.isna(prom_gral) else f"{prom_gral:.1f}%"
-            st.markdown(f'<div style="background-color:#e1f5fe; padding:15px; border-radius:10px; border-left:5px solid #0288d1; margin-bottom:20px;">Promedio de Desempeño Final: <b>{txt_prom_gral}</b></div>', unsafe_allow_html=True)
+            st.markdown(f"<div style='background-color:#111827; padding:15px; border-radius:8px; border-left:4px solid #38bdf8; margin-bottom:20px; border-top:1px solid #1f2937; border-right:1px solid #1f2937; border-bottom:1px solid #1f2937;'><span style='color:#94a3b8;'>Promedio de Desempeño Final:</span> <b style='color:#f8fafc; font-size:1.1rem;'>{txt_prom_gral}</b></div>", unsafe_allow_html=True)
             
             df_grafico = df_final.dropna(subset=[m['comp'], m['tablero']])
             if not df_grafico.empty:
-                fig_bub = px.scatter(df_grafico, x=m['tablero'], y=m['comp'], color=m['area'], text='Inic', hover_name=m['nombre'], height=600, template="plotly_white")
-                fig_bub.update_layout(xaxis=dict(range=[-5, 105], title="% Tablero (Dinámico)"), yaxis=dict(range=[-5, 105], title="% Competencias"))
-                fig_bub.update_traces(textposition='middle center', textfont=dict(size=10, color='white', family="Arial Black"), marker=dict(size=35, opacity=0.8, line=dict(width=1, color='white')))
+                fig_bub = px.scatter(df_grafico, x=m['tablero'], y=m['comp'], color=m['area'], text='Inic', hover_name=m['nombre'], height=600, template="plotly_dark")
+                fig_bub.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(range=[-5, 105], title="% Tablero (Dinámico)", showgrid=True, gridcolor='#1f2937'), yaxis=dict(range=[-5, 105], title="% Competencias", showgrid=True, gridcolor='#1f2937'))
+                fig_bub.update_traces(textposition='middle center', textfont=dict(size=10, color='white', family="Arial Black"), marker=dict(size=35, opacity=0.8, line=dict(width=1, color='#111827')))
                 st.plotly_chart(fig_bub, use_container_width=True)
             else:
-                st.warning("⚠️ El gráfico no se puede mostrar: Faltan notas de Tablero o Competencias para los colaboradores filtrados.")
+                st.warning("⚠️ El gráfico no se puede mostrar: Faltan notas de Tablero o Competencias.")
 
+        # ================== COMPETENCIAS Y TABLEROS ==================
         elif st.session_state.pagina_desempeno in ["🧠 Competencias", "📑 Tableros"]:
             is_comp = "Competencias" in st.session_state.pagina_desempeno
             col_d = m['comp'] if is_comp else m['tablero']
@@ -414,13 +463,13 @@ if modulo_elegido == "📊 Gestión de Desempeño":
             txt_prom_seccion = "S/D" if pd.isna(prom_seccion) else f"{prom_seccion:.1f}%"
             
             if not is_comp and f_nom != "Todos":
-                st.info(f"📌 Frecuencia de Evaluación de {f_nom}: **{df_final.iloc[0]['Frecuencia']}**")
+                st.markdown(f"<div style='background-color:#111827; padding:10px 15px; border-radius:8px; border-left:4px solid #f97316; margin-bottom:15px;'><span style='color:#94a3b8;'>Frecuencia de Evaluación de {f_nom}:</span> <b style='color:#f8fafc;'>{df_final.iloc[0]['Frecuencia']}</b></div>", unsafe_allow_html=True)
             
             q = st.columns(4)
             with q[0]: st.markdown(f'<div class="kpi-container"><p>Total</p><h3>{len(df_final)}</h3></div>', unsafe_allow_html=True)
-            with q[1]: st.markdown(f'<div class="kpi-container"><p>Evaluados</p><h3 style="color:#3498db;">{evals}</h3></div>', unsafe_allow_html=True)
-            with q[2]: st.markdown(f'<div class="kpi-container"><p>Pendientes</p><h3 style="color:#e74c3c;">{no_evals}</h3></div>', unsafe_allow_html=True)
-            with q[3]: st.markdown(f'<div class="kpi-container"><p>Promedio %</p><h3 style="color:#27ae60;">{txt_prom_seccion}</h3></div>', unsafe_allow_html=True)
+            with q[1]: st.markdown(f'<div class="kpi-container"><p>Evaluados</p><h3 style="color:#38bdf8;">{evals}</h3></div>', unsafe_allow_html=True)
+            with q[2]: st.markdown(f'<div class="kpi-container"><p>Pendientes</p><h3 style="color:#f43f5e;">{no_evals}</h3></div>', unsafe_allow_html=True)
+            with q[3]: st.markdown(f'<div class="kpi-container"><p>Promedio %</p><h3 style="color:#10b981;">{txt_prom_seccion}</h3></div>', unsafe_allow_html=True)
             
             st.markdown("<br>", unsafe_allow_html=True)
             cats_sub = {"CRÍTICO": df_final[df_final[col_d] < 70], "ESPERADO": df_final[(df_final[col_d] >= 70) & (df_final[col_d] < 85)], "ALTO": df_final[(df_final[col_d] >= 85) & (df_final[col_d] < 95)], "SOBRESALIENTE": df_final[df_final[col_d] >= 95], "SIN TABLERO/ EVALUACIÓN": df_final[df_final[col_d].isna()]}
@@ -429,6 +478,7 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                 if b_cols[i].button(f"{k} ({len(v)})", key=f"btn2_{k}"): st.session_state.det_sel = k
                 
             if st.session_state.det_sel in cats_sub:
+                st.markdown(f"#### 📋 Detalle de Colaboradores: {st.session_state.det_sel}")
                 df_show_t = cats_sub[st.session_state.det_sel].copy()
                 df_show_t['Antigüedad'] = df_show_t['Fecha_Ingreso'].apply(lambda x: get_ant(x, datetime.now().year))
                 df_show_t['F. Ingreso'] = df_show_t['Fecha_Ingreso'].dt.strftime('%d/%m/%Y').fillna("S/D")
@@ -439,9 +489,11 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                 
             st.divider()
             if evals > 0:
-                fig_strip = px.strip(df_final.dropna(subset=[col_d]), x=m['empresa'], y=col_d, color=sem_d, color_discrete_map=cmap_sem, hover_name=m['nombre'], height=550, template="plotly_white")
+                fig_strip = px.strip(df_final.dropna(subset=[col_d]), x=m['empresa'], y=col_d, color=sem_d, color_discrete_map=cmap_sem, hover_name=m['nombre'], height=450, template="plotly_dark")
+                fig_strip.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis_title="%" , xaxis_title="")
                 st.plotly_chart(fig_strip, use_container_width=True)
 
+        # ================== EVOLUCIÓN ==================
         elif "Evolución" in st.session_state.pagina_desempeno:
             if f_nom != "Todos":
                 c_data = df_final.iloc[0]
@@ -453,17 +505,26 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                 antiguedad_str = get_ant(fecha_ingreso_val, datetime.now().year) if pd.notna(fecha_ingreso_val) else "S/D"
                 
                 with e1: 
-                    st.title(f_nom)
-                    st.caption(f"{c_data[m['puesto']]} | Área: {c_data[m['area']]} | Frecuencia: {c_data['Frecuencia']} | Antigüedad: {antiguedad_str} | {c_data[m['empresa']]}")
+                    st.markdown(f"<h2 style='margin-bottom:5px; color:#f8fafc;'>{f_nom}</h2>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='color:#94a3b8; font-size:14px;'>{c_data[m['puesto']]} &nbsp;|&nbsp; <b>Área:</b> {c_data[m['area']]} &nbsp;|&nbsp; <b>Frecuencia:</b> <span style='color:#f97316;'>{c_data['Frecuencia']}</span> &nbsp;|&nbsp; <b>Antigüedad:</b> {antiguedad_str} &nbsp;|&nbsp; {c_data[m['empresa']]}</p>", unsafe_allow_html=True)
                 
                 prom_evolucion = np.nanmean(vals)
                 txt_prom_evolucion = "S/D" if np.isnan(prom_evolucion) else f"{prom_evolucion:.1f}%"
-                with e2: st.markdown(f'<div class="kpi-container"><p>Prom. Anual</p><h3 style="color:#27ae60;">{txt_prom_evolucion}</h3></div>', unsafe_allow_html=True)
+                with e2: st.markdown(f'<div class="kpi-container" style="height:100px !important;"><p>Prom. Anual</p><h3 style="color:#10b981;">{txt_prom_evolucion}</h3></div>', unsafe_allow_html=True)
                 
-                fig_evol = go.Figure(go.Scatter(x=MESES_NOMBRES, y=vals, mode='lines+markers+text', line=dict(color='#3498db', width=4), text=[f"{v:.0f}%" if not np.isnan(v) else "" for v in vals], textposition="top center"))
-                fig_evol.add_shape(type="line", x0=0, y0=100, x1=11, y1=100, line=dict(color="#27ae60", width=2, dash="dash"))
-                st.plotly_chart(fig_evol.update_layout(height=450, template="plotly_white", yaxis=dict(range=[0, 165])), use_container_width=True)
-            else: st.info("👈 Seleccione un colaborador en los filtros superiores.")
+                fig_evol = go.Figure()
+                fig_evol.add_trace(go.Scatter(
+                    x=MESES_NOMBRES, y=vals, mode='lines+markers+text',
+                    line=dict(color='#38bdf8', width=3),
+                    marker=dict(size=8, color='#38bdf8', line=dict(width=2, color='#111827')),
+                    fill='tozeroy', fillcolor='rgba(56, 189, 248, 0.1)',
+                    text=[f"{v:.0f}%" if not np.isnan(v) else "" for v in vals],
+                    textposition="top center", textfont=dict(color='#f8fafc')
+                ))
+                fig_evol.add_shape(type="line", x0=0, y0=100, x1=11, y1=100, line=dict(color="#10b981", width=2, dash="dash"))
+                fig_evol.update_layout(height=400, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(range=[0, 165], showgrid=True, gridcolor='#1f2937'), xaxis=dict(showgrid=False))
+                st.plotly_chart(fig_evol, use_container_width=True)
+            else: st.info("👈 Seleccione un colaborador en los filtros superiores para ver su evolución.")
     else:
         st.error("Error al conectar con la base de datos de Desempeño.")
 
@@ -476,7 +537,8 @@ elif modulo_elegido == "📈 Performance Comercial":
     st.sidebar.markdown("**Menú Comercial**")
     dimension = st.sidebar.radio("Nav Comercial", ["Métricas de Ventas", "Matriz 9-Box"], label_visibility="collapsed")
     
-    st.title("Performance Comercial Cenoa")
+    st.markdown(f"<h2>Performance Comercial <span style='color:#f97316;'>| Grupo Cenoa</span></h2>", unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
 
     if dimension == "Métricas de Ventas":
         f1, f2, f3, f4 = st.columns([1, 2, 2, 1.5])
@@ -500,21 +562,23 @@ elif modulo_elegido == "📈 Performance Comercial":
             df_p = df_raw_c.copy()
             if sel_emp != "Todas": df_p = df_p[df_p['Empresa'] == sel_emp]
             if sel_loc != "Todas": df_p = df_p[df_p['Localidad'] == sel_loc]
-            with f4: st.metric("VENDEDORES", len(df_p))
+            with f4: st.markdown(f'<div class="kpi-container" style="height:70px !important; padding:5px;"><p style="font-size:0.65rem;">Vendedores</p><h3 style="margin-top:0px; font-size:1.8rem; color:#f97316;">{len(df_p)}</h3></div>', unsafe_allow_html=True)
+
+            st.markdown("<hr style='margin-top: 10px; margin-bottom: 20px;'>", unsafe_allow_html=True)
 
             c1, c2 = st.columns([1.5, 1])
             with c1:
-                st.markdown("**Cantidad de Operaciones por Empresa**")
+                st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px;'>// CANTIDAD DE OPERACIONES POR EMPRESA</p>", unsafe_allow_html=True)
                 df_m = df_p.groupby('Empresa')[[f"{m}_v" for m in lista_meses]].sum().reset_index().melt(id_vars='Empresa', var_name='Mes', value_name='Ventas')
                 df_m['Mes'] = df_m['Mes'].str.replace('_v', '')
                 fig_g = px.bar(df_m, x='Mes', y='Ventas', color='Empresa', barmode='group', text_auto='.0f')
-                fig_g.update_layout(xaxis=dict(type='category', categoryarray=lista_meses)) 
+                fig_g.update_layout(xaxis=dict(type='category', categoryarray=lista_meses, showgrid=False), yaxis=dict(showgrid=True, gridcolor='#1f2937'), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(t=10, b=10)) 
                 st.plotly_chart(fig_g, use_container_width=True)
                 
             with c2:
-                st.markdown("**Top 10 Asesores (Operaciones)**")
-                fig_top = px.bar(df_p.nlargest(10, 'Total_Acumulado'), x='Total_Acumulado', y='Vendedor', orientation='h', text_auto='.0f', color_discrete_sequence=['#e67e22'])
-                fig_top.update_layout(yaxis={'categoryorder':'total ascending'})
+                st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px;'>// TOP 10 ASESORES (OPERACIONES)</p>", unsafe_allow_html=True)
+                fig_top = px.bar(df_p.nlargest(10, 'Total_Acumulado'), x='Total_Acumulado', y='Vendedor', orientation='h', text_auto='.0f', color_discrete_sequence=['#f97316'])
+                fig_top.update_layout(yaxis={'categoryorder':'total ascending'}, xaxis=dict(showgrid=True, gridcolor='#1f2937'), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(t=10, b=10))
                 st.plotly_chart(fig_top, use_container_width=True)
 
             st.divider()
@@ -529,31 +593,44 @@ elif modulo_elegido == "📈 Performance Comercial":
                 
             with col_r:
                 if v_data is not None:
-                    d1, d2, d3 = st.columns([3, 1, 1])
-                    with d1:
-                        st.subheader(v_sel)
-                        st.markdown(f"<span style='color:#e67e22; font-weight:bold;'>{get_ant(v_data['Fecha_Ingreso'], anio_sel)}</span>", unsafe_allow_html=True)
-                        st.caption(f"Canal: {v_data['Canal']} | Empresa: {v_data['Empresa']} | Localidad: {v_data['Localidad']}")
-                    d2.metric("META", int(v_data['Objetivo_Mensual']))
+                    st.markdown(f"""
+                    <div class='perfil-asesor'>
+                        <h3 style='margin-bottom: 5px; color: #f8fafc;'>{v_sel}</h3>
+                        <p style='font-size: 14px; margin-bottom: 0px;'>
+                            <b>Antigüedad:</b> <span style='color:#e67e22;'>{get_ant(v_data['Fecha_Ingreso'], anio_sel)}</span> &nbsp;|&nbsp; 
+                            <b>Canal:</b> {v_data['Canal']} &nbsp;|&nbsp; <b>Empresa:</b> {v_data['Empresa']} &nbsp;|&nbsp; <b>Localidad:</b> {v_data['Localidad']}
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    d1, d2 = st.columns([1, 1])
+                    with d1: st.markdown(f"<div class='metric-card'><p>META MENSUAL</p><h2 style='color:#38bdf8;'>{int(v_data['Objetivo_Mensual'])}</h2></div>", unsafe_allow_html=True)
+                    
                     diff = v_data['Promedio'] - v_data['Objetivo_Mensual']
-                    d3.metric("PROM", f"{v_data['Promedio']:.1f}", delta=f"{diff:.1f}", delta_color="normal" if diff >= 0 else "inverse")
+                    color_p = "#10b981" if diff >= 0 else "#ef4444"
+                    signo_p = "+" if diff >= 0 else ""
+                    with d2: st.markdown(f"<div class='metric-card'><p>PROMEDIO REAL</p><h2 style='color:{color_p};'>{v_data['Promedio']:.1f} <span style='font-size:1rem;'>({signo_p}{diff:.1f})</span></h2></div>", unsafe_allow_html=True)
                     
                     y_vals = [float(v_data[f"{m}_v"]) for m in lista_meses]
                     text_vals = [f"{v:.0f}" for v in y_vals]
                     fig_evol = go.Figure()
-                    fig_evol.add_trace(go.Bar(x=lista_meses, y=y_vals, name="Ventas", text=text_vals, textposition='auto', marker_color='#3498db'))
-                    fig_evol.add_trace(go.Scatter(x=lista_meses, y=[float(v_data['Objetivo_Mensual'])]*12, mode='lines', name="Objetivo", line=dict(color='red', dash='dot', width=3)))
-                    fig_evol.update_layout(height=300, margin=dict(t=20), xaxis=dict(type='category', categoryorder='array', categoryarray=lista_meses))
+                    fig_evol.add_trace(go.Bar(x=lista_meses, y=y_vals, name="Ventas", text=text_vals, textposition='auto', marker_color='#38bdf8'))
+                    fig_evol.add_trace(go.Scatter(x=lista_meses, y=[float(v_data['Objetivo_Mensual'])]*12, mode='lines', name="Objetivo", line=dict(color='#ef4444', dash='dot', width=3)))
+                    fig_evol.update_layout(height=280, margin=dict(t=20, b=10), xaxis=dict(type='category', categoryorder='array', categoryarray=lista_meses), yaxis=dict(showgrid=True, gridcolor='#1f2937'), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                     st.plotly_chart(fig_evol, use_container_width=True)
 
             st.divider()
             g1, g2 = st.columns(2)
             with g1: 
-                st.markdown("**Participación por Localidad**")
-                st.plotly_chart(px.pie(df_p, values='Total_Acumulado', names='Localidad', hole=0.5), use_container_width=True)
+                st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px;'>// PARTICIPACIÓN POR LOCALIDAD</p>", unsafe_allow_html=True)
+                fig_pie = px.pie(df_p, values='Total_Acumulado', names='Localidad', hole=0.5)
+                fig_pie.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(t=10, b=10))
+                st.plotly_chart(fig_pie, use_container_width=True)
             with g2: 
-                st.markdown("**Consistencia de Ventas (Box Plot)**")
-                st.plotly_chart(px.box(df_p, x='Empresa', y='Promedio', points="all", color='Empresa', hover_data=['Vendedor']), use_container_width=True)
+                st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px;'>// CONSISTENCIA DE VENTAS (BOX PLOT)</p>", unsafe_allow_html=True)
+                fig_box = px.box(df_p, x='Empresa', y='Promedio', points="all", color='Empresa', hover_data=['Vendedor'])
+                fig_box.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(t=10, b=10), yaxis=dict(showgrid=True, gridcolor='#1f2937'))
+                st.plotly_chart(fig_box, use_container_width=True)
         else:
             st.error("Error al conectar con la base Comercial.")
 
@@ -581,18 +658,18 @@ elif modulo_elegido == "📈 Performance Comercial":
             df_9['X_Axis'] = df_9['Alcance_Promedio_Real'] if sel_p in ["Acumulado Anual", "Todos los meses (Promedio)"] else df_9[f"{sel_p}_%"].fillna(0)
 
             quadrants = {
-                "Dilema": ("rgba(255, 198, 26, 0.2)", "💡", -5, 33.3, 66.6, 110),
-                "E. Emergente": ("rgba(144, 238, 144, 0.3)", "📈", 33.3, 66.6, 66.6, 110),
-                "ESTRELLA": ("rgba(46, 204, 113, 0.3)", "⭐", 66.6, 130, 66.6, 110),
-                "Cuestionable": ("rgba(243, 156, 18, 0.2)", "⚠️", -5, 33.3, 33.3, 66.6),
-                "Core Player": ("rgba(189, 195, 199, 0.2)", "⚙️", 33.3, 66.6, 33.3, 66.6),
-                "High Performer": ("rgba(46, 204, 113, 0.15)", "🚀", 66.6, 130, 33.3, 66.6),
-                "Bajo Rendimiento": ("rgba(231, 76, 60, 0.2)", "📉", -5, 33.3, -5, 33.3),
-                "En Riesgo": ("rgba(230, 126, 34, 0.2)", "🚨", 33.3, 66.6, -5, 33.3),
-                "Eficaz": ("rgba(39, 174, 96, 0.15)", "✅", 66.6, 130, -5, 33.3)
+                "Dilema": ("rgba(250, 204, 21, 0.2)", "💡", -5, 33.3, 66.6, 110),
+                "E. Emergente": ("rgba(52, 211, 153, 0.2)", "📈", 33.3, 66.6, 66.6, 110),
+                "ESTRELLA": ("rgba(16, 185, 129, 0.3)", "⭐", 66.6, 130, 66.6, 110),
+                "Cuestionable": ("rgba(249, 115, 22, 0.2)", "⚠️", -5, 33.3, 33.3, 66.6),
+                "Core Player": ("rgba(148, 163, 184, 0.2)", "⚙️", 33.3, 66.6, 33.3, 66.6),
+                "High Performer": ("rgba(16, 185, 129, 0.15)", "🚀", 66.6, 130, 33.3, 66.6),
+                "Bajo Rendimiento": ("rgba(239, 68, 68, 0.2)", "📉", -5, 33.3, -5, 33.3),
+                "En Riesgo": ("rgba(249, 115, 22, 0.2)", "🚨", 33.3, 66.6, -5, 33.3),
+                "Eficaz": ("rgba(52, 211, 153, 0.15)", "✅", 66.6, 130, -5, 33.3)
             }
 
-            st.write("**Visualizar Listado por Categoría Comercial:**")
+            st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px;'>// VISUALIZAR LISTADO POR CATEGORÍA</p>", unsafe_allow_html=True)
             cats = list(quadrants.keys())
             bc1, bc2, bc3 = st.columns(3)
             bc4, bc5, bc6 = st.columns(3)
@@ -619,7 +696,8 @@ elif modulo_elegido == "📈 Performance Comercial":
                     if st.button("❌ Cerrar Listado", key="btn_cerrar"):
                         st.session_state.cat_filtrada = None
                         st.rerun() 
-                st.divider()
+            
+            st.divider()
 
             # --- GRÁFICO 9-BOX ---
             fig_9 = px.scatter(
@@ -627,11 +705,11 @@ elif modulo_elegido == "📈 Performance Comercial":
                 hover_name='Vendedor',
                 range_x=[-5, 130], range_y=[-5, 110],
                 labels={'X_Axis': f'% Resultados', 'Comp_Total_%': '% Competencias'},
-                height=650, template="plotly_white"
+                height=650, template="plotly_dark"
             )
             
             fig_9.update_traces(
-                marker=dict(size=28, opacity=0.9, line=dict(width=1.5, color='DarkSlateGrey')),
+                marker=dict(size=28, opacity=0.9, line=dict(width=1.5, color='#111827')),
                 textposition='middle center', 
                 textfont=dict(color='white', size=11, family="Arial Black")
             )
@@ -639,10 +717,12 @@ elif modulo_elegido == "📈 Performance Comercial":
             for cat, info in quadrants.items():
                 fig_9.add_shape(type="rect", x0=info[2], x1=info[3], y0=info[4], y1=info[5], fillcolor=info[0], layer="below", line_width=0)
             
-            fig_9.add_vline(x=33.3, line_dash="dash", line_color="rgba(0,0,0,0.3)")
-            fig_9.add_vline(x=66.6, line_dash="dash", line_color="rgba(0,0,0,0.3)")
-            fig_9.add_hline(y=33.3, line_dash="dash", line_color="rgba(0,0,0,0.3)")
-            fig_9.add_hline(y=66.6, line_dash="dash", line_color="rgba(0,0,0,0.3)")
+            fig_9.add_vline(x=33.3, line_dash="dash", line_color="rgba(255,255,255,0.2)")
+            fig_9.add_vline(x=66.6, line_dash="dash", line_color="rgba(255,255,255,0.2)")
+            fig_9.add_hline(y=33.3, line_dash="dash", line_color="rgba(255,255,255,0.2)")
+            fig_9.add_hline(y=66.6, line_dash="dash", line_color="rgba(255,255,255,0.2)")
+            
+            fig_9.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
 
             st.plotly_chart(fig_9, use_container_width=True)
                 
@@ -651,7 +731,7 @@ elif modulo_elegido == "📈 Performance Comercial":
             op_v9 = ["-- Seleccionar Asesor --"] + sorted(df_9['Vendedor'].unique())
             if st.session_state.f_vend_9box not in op_v9: st.session_state.f_vend_9box = "-- Seleccionar Asesor --"
             
-            st.markdown("### 📋 Ficha Técnica de Desempeño")
+            st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px;'>// FICHA TÉCNICA DE DESEMPEÑO</p>", unsafe_allow_html=True)
             v_ficha = st.selectbox("🔎 Buscador Manual de Asesor:", op_v9, key="f_vend_9box", on_change=sync_filtros_9box)
 
             if v_ficha != "-- Seleccionar Asesor --":
@@ -659,10 +739,10 @@ elif modulo_elegido == "📈 Performance Comercial":
                 
                 st.markdown(f"""
                 <div class='perfil-asesor'>
-                    <h3 style='margin-bottom: 5px; color: #2c3e50;'>{v_f['Vendedor']}</h3>
+                    <h3 style='margin-bottom: 5px;'>{v_f['Vendedor']}</h3>
                     <p style='font-size: 15px; margin-bottom: 0px;'>
-                        <b>Antigüedad:</b> <span style='color:#e67e22;'>{get_ant(v_f['Fecha_Ingreso'], anio_sel9)}</span> &nbsp;|&nbsp; 
-                        <b>Tipo/Canal:</b> {v_f['Canal']} &nbsp;|&nbsp; 
+                        <b>Antigüedad:</b> <span style='color:#f97316;'>{get_ant(v_f['Fecha_Ingreso'], anio_sel9)}</span> &nbsp;|&nbsp; 
+                        <b>Canal:</b> {v_f['Canal']} &nbsp;|&nbsp; 
                         <b>Empresa:</b> {v_f['Empresa']} &nbsp;|&nbsp; 
                         <b>Localidad:</b> {v_f['Localidad']}
                     </p>
@@ -670,30 +750,30 @@ elif modulo_elegido == "📈 Performance Comercial":
                 """, unsafe_allow_html=True)
                 
                 k1, k2, k3 = st.columns(3)
-                with k1: st.markdown(f"<div class='metric-card'><h2>{v_f['X_Axis']:.1f}%</h2><p>RESULTADOS PROMEDIO</p></div>", unsafe_allow_html=True)
-                with k2: st.markdown(f"<div class='metric-card'><h2>{v_f['Comp_Total_%']:.1f}%</h2><p>COMPETENCIAS</p></div>", unsafe_allow_html=True)
+                with k1: st.markdown(f"<div class='metric-card'><p>RESULTADOS PROMEDIO</p><h2 style='color:#38bdf8;'>{v_f['X_Axis']:.1f}%</h2></div>", unsafe_allow_html=True)
+                with k2: st.markdown(f"<div class='metric-card'><p>COMPETENCIAS</p><h2 style='color:#f43f5e;'>{v_f['Comp_Total_%']:.1f}%</h2></div>", unsafe_allow_html=True)
                 with k3:
                     q = "MIEMBRO CLAVE 🌟" if v_f['X_Axis'] >= 66.6 and v_f['Comp_Total_%'] >= 66.6 else "EN DESARROLLO 📈"
-                    color = "#2ecc71" if "CLAVE" in q else "#e67e22"
-                    st.markdown(f"<div class='metric-card' style='border-top: 5px solid {color};'><h2 style='color:{color};'>{q}</h2><p>ESTADO ACTUAL</p></div>", unsafe_allow_html=True)
+                    color = "#10b981" if "CLAVE" in q else "#f97316"
+                    st.markdown(f"<div class='metric-card' style='border-top: 4px solid {color};'><p>ESTADO ACTUAL</p><h2 style='color:{color}; font-size:1.8rem;'>{q}</h2></div>", unsafe_allow_html=True)
 
                 gl, gr = st.columns([1, 1.5])
                 with gl:
-                    st.markdown("**Desglose de Competencias**")
+                    st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px; margin-top:20px;'>// DESGLOSE DE COMPETENCIAS</p>", unsafe_allow_html=True)
                     comp_pcts = [v_f[c] * 20 for c in comp_labels]
                     fig_c = px.bar(x=comp_pcts, y=comp_labels, orientation='h', color=comp_labels, text=[f"{val:.1f}%" for val in comp_pcts])
-                    fig_c.update_layout(showlegend=False, xaxis_range=[0, max(comp_pcts + [100]) + 10], xaxis_title="Nivel (%)", yaxis_title="") 
+                    fig_c.update_layout(showlegend=False, xaxis_range=[0, max(comp_pcts + [100]) + 10], xaxis_title="Nivel (%)", yaxis_title="", template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)') 
                     st.plotly_chart(fig_c, use_container_width=True)
                 with gr:
-                    st.markdown("**Evolución mensual % alcance de ventas**")
+                    st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px; margin-top:20px;'>// EVOLUCIÓN % ALCANCE</p>", unsafe_allow_html=True)
                     
                     meses_completados = [m for m in lista_meses if pd.notnull(v_f[f"{m}_%"])]
                     alcances_reales = [v_f[f"{m}_%"] for m in meses_completados]
                     
                     if alcances_reales:
                         fig_l = px.line(x=meses_completados, y=alcances_reales, markers=True, text=[f"{val:.0f}%" for val in alcances_reales])
-                        fig_l.update_traces(line_color='#2ecc71', line_width=4, marker=dict(size=10, color='white', line=dict(width=2, color='#2ecc71')))
-                        fig_l.update_layout(yaxis_range=[0, max(alcances_reales)+20], xaxis=dict(categoryorder='array', categoryarray=lista_meses))
+                        fig_l.update_traces(line_color='#10b981', line_width=4, marker=dict(size=10, color='#111827', line=dict(width=2, color='#10b981')))
+                        fig_l.update_layout(yaxis_range=[0, max(alcances_reales)+20], xaxis=dict(categoryorder='array', categoryarray=lista_meses), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(showgrid=True, gridcolor='#1f2937'))
                         st.plotly_chart(fig_l, use_container_width=True)
                     else:
                         st.info("Sin datos de alcance registrados para este asesor en el año seleccionado.")
