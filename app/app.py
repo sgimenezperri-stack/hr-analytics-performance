@@ -69,7 +69,7 @@ st.markdown("""
     [data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] { background-color: #1e293b !important; border-left: 4px solid #f97316 !important; }
     [data-testid="stRadio"] label[data-checked="true"] p { color: #ffffff !important; font-weight: 700 !important; }
 
-    /* --- TARJETAS Y KPI --- */
+    /* --- CUADRANTES KPI Y DOTACIÓN --- */
     .kpi-container {
         background-color: #111827; border-radius: 12px; padding: 20px; text-align: center; 
         border: 1px solid #1f2937; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
@@ -81,14 +81,34 @@ st.markdown("""
     .kpi-container h3 { margin: 10px 0 0 0; font-size: 2.5rem; font-weight: 800; color: #f8fafc; line-height: 1; }
     .dotacion-highlight h3 { color: #38bdf8 !important; }
 
-    /* Botones de Categoría Gral */
+    /* --- Botones de Categoría Gral (MODIFICADOS) --- */
     .main div.stButton > button {
-        border-radius: 8px; font-weight: 600; background-color: #111827; 
-        border: 1px solid #1f2937; height: 50px !important; font-size: 0.85rem !important;
-        transition: all 0.2s; display: flex; align-items: center; justify-content: center;
-        color: #e2e8f0; width: 100%;
+        border-radius: 8px; 
+        font-weight: 700; 
+        background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%); 
+        border: 1px solid #334155; 
+        min-height: 65px !important; /* Altura mínima uniforme */
+        font-size: 0.85rem !important;
+        transition: all 0.3s ease; 
+        display: flex; 
+        flex-direction: column; /* Centra el texto si se rompe en dos líneas */
+        align-items: center; 
+        justify-content: center;
+        color: #f8fafc; 
+        width: 100%; 
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        white-space: normal !important; /* Permite que el texto baje de línea prolijamente */
+        line-height: 1.2 !important;
     }
-    .main div.stButton > button:hover { border-color: #f97316; color: #f97316; box-shadow: 0 0 15px rgba(249, 115, 22, 0.1);}
+    .main div.stButton > button:hover { 
+        border-color: #38bdf8; 
+        color: #38bdf8; 
+        box-shadow: 0 0 12px rgba(56, 189, 248, 0.4); 
+        transform: translateY(-2px);
+    }
+    .main div.stButton > button:active { 
+        transform: translateY(0px); 
+    }
 
     /* Elementos Comerciales */
     .metric-card { background-color: #111827; border-radius: 12px; padding: 20px; text-align: center; border: 1px solid #1f2937; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
