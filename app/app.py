@@ -81,29 +81,33 @@ st.markdown("""
     .kpi-container h3 { margin: 10px 0 0 0; font-size: 2.5rem; font-weight: 800; color: #f8fafc; line-height: 1; }
     .dotacion-highlight h3 { color: #38bdf8 !important; }
 
-    /* --- Botones de Categoría Gral (MODIFICADOS) --- */
+    /* --- Botones de Categoría Gral (MODIFICADOS ESTÉTICA) --- */
     .main div.stButton > button {
         border-radius: 8px; 
-        font-weight: 700; 
-        background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%); 
-        border: 1px solid #334155; 
-        min-height: 65px !important; /* Altura mínima uniforme */
+        font-weight: 800 !important; /* Letra en negrita extrema */
+        background-color: #1e293b !important; /* Recuadro pintado sólido */
+        border: 1px solid #475569 !important; 
+        border-left: 4px solid #38bdf8 !important; /* Raya de color celeste para simetría visual */
+        min-height: 70px !important; /* Altura uniforme para todos */
         font-size: 0.85rem !important;
         transition: all 0.3s ease; 
         display: flex; 
-        flex-direction: column; /* Centra el texto si se rompe en dos líneas */
+        flex-direction: column; 
         align-items: center; 
         justify-content: center;
-        color: #f8fafc; 
+        color: #f8fafc !important; 
         width: 100%; 
         box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        white-space: normal !important; /* Permite que el texto baje de línea prolijamente */
-        line-height: 1.2 !important;
+        white-space: normal !important; 
+        line-height: 1.3 !important;
+        padding: 5px !important;
     }
     .main div.stButton > button:hover { 
-        border-color: #38bdf8; 
-        color: #38bdf8; 
-        box-shadow: 0 0 12px rgba(56, 189, 248, 0.4); 
+        background-color: #2d3748 !important;
+        border-color: #f97316 !important; 
+        border-left: 4px solid #f97316 !important;
+        color: #f97316 !important; 
+        box-shadow: 0 0 12px rgba(249, 115, 22, 0.4); 
         transform: translateY(-2px);
     }
     .main div.stButton > button:active { 
@@ -281,6 +285,18 @@ def sync_filtros_9box():
         st.session_state.f_emp_9box = "Todas"
         st.session_state.f_loc_9box = "Todas"
 
+# --- FUNCIONES DE ESTILO PARA TABLAS ---
+def format_pct(val):
+    if pd.isna(val): return "S/D"
+    return f"{val:.1f}%"
+
+def color_sem_table(val):
+    if pd.isna(val): return 'color: #64748b;'
+    if val >= 90: return 'color: #10b981; font-weight: 800;'
+    if val >= 80: return 'color: #f59e0b; font-weight: 800;'
+    return 'color: #ef4444; font-weight: 800;'
+
+
 # --- 4. BARRA LATERAL UNIFICADA ---
 st.sidebar.markdown('<div class="sidebar-header"><h1 style="color:#ffffff;">GRUPO CENOA<br><span style="color:#f97316; font-size:0.8rem;">Gestión de Performance</span></h1></div>', unsafe_allow_html=True)
 
@@ -443,7 +459,8 @@ if modulo_elegido == "📊 Gestión de Desempeño":
         # ================== DESEMPEÑO GRAL ==================
         elif "Desempeño Gral." in st.session_state.pagina_desempeno:
             cats = {"ESTRELLA": df_final[df_final[m['final']] >= 90], "PROFESIONAL": df_final[(df_final[m['final']] >= 80) & (df_final[m['final']] < 90)], "CLAVE": df_final[(df_final[m['final']] >= 70) & (df_final[m['final']] < 80)], "ENIGMA": df_final[(df_final[m['final']] >= 60) & (df_final[m['final']] < 70)], "RIESGO": df_final[df_final[m['final']] < 60]}
-            c_btns = st.columns(5)
+            
+            c_btns = st.columns(5, gap="small")
             for i, (k, v) in enumerate(cats.items()):
                 if c_btns[i].button(f"{k} ({len(v)})", key=f"btn_{k}"): st.session_state.det_sel = k
             
@@ -455,8 +472,13 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                 
                 meses_hist = [mes for mes in MESES_NOMBRES if mes in df_show.columns]
                 cols_mostrar = [m['nombre'], m['puesto'], 'F. Ingreso', 'Antigüedad'] + meses_hist + [m['final']]
+                cols_numericas = meses_hist + [m['final']]
                 
-                st.dataframe(df_show[cols_mostrar], use_container_width=True)
+                df_styled = df_show[cols_mostrar].style.format({c: format_pct for c in cols_numericas})
+                try: df_styled = df_styled.map(color_sem_table, subset=cols_numericas)
+                except AttributeError: df_styled = df_styled.applymap(color_sem_table, subset=cols_numericas)
+
+                st.dataframe(df_styled, use_container_width=True)
                 if st.button("✖️ Cerrar Detalle"): st.session_state.det_sel = None; st.rerun()
             
             prom_gral = df_final[m["final"]].mean()
@@ -493,7 +515,8 @@ if modulo_elegido == "📊 Gestión de Desempeño":
             
             st.markdown("<br>", unsafe_allow_html=True)
             cats_sub = {"CRÍTICO": df_final[df_final[col_d] < 70], "ESPERADO": df_final[(df_final[col_d] >= 70) & (df_final[col_d] < 85)], "ALTO": df_final[(df_final[col_d] >= 85) & (df_final[col_d] < 95)], "SOBRESALIENTE": df_final[df_final[col_d] >= 95], "SIN TABLERO/ EVALUACIÓN": df_final[df_final[col_d].isna()]}
-            b_cols = st.columns(5)
+            
+            b_cols = st.columns(5, gap="small")
             for i, (k, v) in enumerate(cats_sub.items()):
                 if b_cols[i].button(f"{k} ({len(v)})", key=f"btn2_{k}"): st.session_state.det_sel = k
                 
@@ -502,9 +525,16 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                 df_show_t = cats_sub[st.session_state.det_sel].copy()
                 df_show_t['Antigüedad'] = df_show_t['Fecha_Ingreso'].apply(lambda x: get_ant(x, datetime.now().year))
                 df_show_t['F. Ingreso'] = df_show_t['Fecha_Ingreso'].dt.strftime('%d/%m/%Y').fillna("S/D")
-                meses_hist = [mes for mes in MESES_NOMBRES if mes in df_show_t.columns]
                 
-                st.dataframe(df_show_t[[m['nombre'], m['empresa'], 'F. Ingreso', 'Antigüedad'] + meses_hist + [col_d]], use_container_width=True)
+                meses_hist = [mes for mes in MESES_NOMBRES if mes in df_show_t.columns]
+                cols_mostrar_t = [m['nombre'], m['empresa'], 'F. Ingreso', 'Antigüedad'] + meses_hist + [col_d]
+                cols_numericas_t = meses_hist + [col_d]
+                
+                df_styled_t = df_show_t[cols_mostrar_t].style.format({c: format_pct for c in cols_numericas_t})
+                try: df_styled_t = df_styled_t.map(color_sem_table, subset=cols_numericas_t)
+                except AttributeError: df_styled_t = df_styled_t.applymap(color_sem_table, subset=cols_numericas_t)
+
+                st.dataframe(df_styled_t, use_container_width=True)
                 if st.button("✖️ Cerrar Lista"): st.session_state.det_sel = None; st.rerun()
                 
             st.divider()
@@ -691,9 +721,10 @@ elif modulo_elegido == "📈 Performance Comercial":
 
             st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px;'>// VISUALIZAR LISTADO POR CATEGORÍA</p>", unsafe_allow_html=True)
             cats = list(quadrants.keys())
-            bc1, bc2, bc3 = st.columns(3)
-            bc4, bc5, bc6 = st.columns(3)
-            bc7, bc8, bc9 = st.columns(3)
+            
+            bc1, bc2, bc3 = st.columns(3, gap="small")
+            bc4, bc5, bc6 = st.columns(3, gap="small")
+            bc7, bc8, bc9 = st.columns(3, gap="small")
             
             for i, b_col in enumerate([bc1, bc2, bc3, bc4, bc5, bc6, bc7, bc8, bc9]):
                 nombre_cat = cats[i]
@@ -709,7 +740,13 @@ elif modulo_elegido == "📈 Performance Comercial":
                 df_detalle = df_9[(df_9['X_Axis'] >= q_info[2]) & (df_9['X_Axis'] <= q_info[3]) & 
                                   (df_9['Comp_Total_%'] >= q_info[4]) & (df_9['Comp_Total_%'] <= q_info[5])]
                 
-                st.dataframe(df_detalle[['Vendedor', 'Empresa', 'Localidad', 'X_Axis', 'Comp_Total_%']].rename(columns={'X_Axis': '% Resultados', 'Comp_Total_%': '% Competencias'}), use_container_width=True)
+                df_detalle_renamed = df_detalle[['Vendedor', 'Empresa', 'Localidad', 'X_Axis', 'Comp_Total_%']].rename(columns={'X_Axis': '% Resultados', 'Comp_Total_%': '% Competencias'})
+                
+                df_styled_9box = df_detalle_renamed.style.format({c: format_pct for c in ['% Resultados', '% Competencias']})
+                try: df_styled_9box = df_styled_9box.map(color_sem_table, subset=['% Resultados', '% Competencias'])
+                except AttributeError: df_styled_9box = df_styled_9box.applymap(color_sem_table, subset=['% Resultados', '% Competencias'])
+                
+                st.dataframe(df_styled_9box, use_container_width=True)
                 
                 col_cerrar, _ = st.columns([1, 4])
                 with col_cerrar:
