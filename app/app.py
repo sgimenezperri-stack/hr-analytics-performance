@@ -10,6 +10,63 @@ import time
 # --- 1. CONFIGURACIÓN ÚNICA DE PÁGINA ---
 st.set_page_config(page_title="Plataforma RRHH | Grupo Cenoa", layout="wide", page_icon="🏢", initial_sidebar_state="expanded")
 
+# =====================================================================
+# --- SISTEMA DE ACCESO RESTRINGIDO (LOGIN) ---
+# =====================================================================
+if 'autenticado' not in st.session_state: 
+    st.session_state.autenticado = False
+
+USUARIOS_HABILITADOS = [
+    "solana.gimenez@cenoa.com.ar",
+    "cecilia.skinner@cenoa.com.ar",
+    "gabriela.lozano@cenoa.com.ar",
+    "marcelo.lozano@cenoa.com.ar",
+    "gonzalo.rodriguez@cenoa.com.ar",
+    "rlozano@autolux.com.ar",
+    "paola.mamani@cenoa.com.ar",
+    "milagros.zuleta@cenoa.com.ar",
+    "antonela.risso@cenoa.com.ar"
+]
+CLAVE_ACCESO = "rrhhcenoa"
+
+if not st.session_state.autenticado:
+    # CSS básico solo para que el fondo aplique también en la pantalla de login
+    st.markdown("""
+        <style>
+        .stApp { background-color: #0e121a; font-family: 'Inter', sans-serif; }
+        div.stButton > button { background-color: #1e293b !important; border: 1px solid #475569 !important; border-left: 4px solid #f97316 !important; color: #f8fafc !important; font-weight: 800 !important; transition: all 0.3s ease; }
+        div.stButton > button:hover { background-color: #2d3748 !important; border-color: #f97316 !important; box-shadow: 0 0 12px rgba(249, 115, 22, 0.4) !important; }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 1.2, 1])
+    with col2:
+        st.markdown("<br><br><br>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align:center; background-color:#111827; padding:40px; border-radius:15px; border:1px solid #1f2937; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.8);'>", unsafe_allow_html=True)
+        st.markdown("<h1 style='color:#f8fafc; margin-bottom:0px; font-weight:800; font-family:\"Inter\", sans-serif;'>GRUPO CENOA</h1>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color:#f97316; margin-top:0px; font-weight:600; letter-spacing:1px;'>Plataforma RRHH</h3>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#94a3b8; font-size:14px;'>Acceso Restringido y Confidencial</p><hr style='border-color:#1f2937;'>", unsafe_allow_html=True)
+        
+        with st.form("login_form"):
+            email_input = st.text_input("✉️ Correo Corporativo")
+            pass_input = st.text_input("🔒 Contraseña", type="password")
+            submit_btn = st.form_submit_button("Ingresar al Dashboard", use_container_width=True)
+            
+            if submit_btn:
+                if email_input.strip().lower() in USUARIOS_HABILITADOS and pass_input == CLAVE_ACCESO:
+                    st.session_state.autenticado = True
+                    st.rerun()
+                else:
+                    st.error("Credenciales incorrectas o usuario no autorizado.")
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    st.stop() # <-- Esto frena la carga del dashboard si no pasaron el login
+
+
+# =====================================================================
+# --- A PARTIR DE AQUÍ, TODO ES EL DASHBOARD QUE YA CONSTRUIMOS ---
+# =====================================================================
+
 # --- VARIABLES GLOBALES FIJAS ---
 MESES_NOMBRES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 
