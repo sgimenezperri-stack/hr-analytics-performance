@@ -390,15 +390,15 @@ if modulo_elegido == "📊 Gestión de Desempeño":
         # FILTROS PRINCIPALES
         f_cols = st.columns([1.5, 1.5, 1.5, 2.5, 1.2])
         
-        op_emp = ["Todas"] + sorted(df_raw_d[m['empresa']].dropna().unique().tolist())
+        op_emp = ["Todas"] + sorted(df_raw_d[m['empresa']].dropna().astype(str).unique().tolist())
         if st.session_state.f_emp_des not in op_emp: st.session_state.f_emp_des = "Todas"
         with f_cols[0]: f_emp = st.selectbox("🏢 Empresa", op_emp, key="f_emp_des")
         
-        op_loc = ["Todas"] + sorted(df_raw_d[m['localidad']].dropna().unique().tolist())
+        op_loc = ["Todas"] + sorted(df_raw_d[m['localidad']].dropna().astype(str).unique().tolist())
         if st.session_state.f_loc_des not in op_loc: st.session_state.f_loc_des = "Todas"
         with f_cols[1]: f_loc = st.selectbox("📍 Localidad", op_loc, key="f_loc_des")
         
-        op_are = ["Todas"] + sorted(df_raw_d[m['area']].dropna().unique().tolist())
+        op_are = ["Todas"] + sorted(df_raw_d[m['area']].dropna().astype(str).unique().tolist())
         if st.session_state.f_are_des not in op_are: st.session_state.f_are_des = "Todas"
         with f_cols[2]: f_are = st.selectbox("📂 Área", op_are, key="f_are_des")
         
@@ -407,7 +407,7 @@ if modulo_elegido == "📊 Gestión de Desempeño":
         if f_loc != "Todas": df_f = df_f[df_f[m['localidad']] == f_loc]
         if f_are != "Todas": df_f = df_f[df_f[m['area']] == f_are]
 
-        nombres_disp = ["Todos"] + sorted(df_f[m['nombre']].unique().tolist())
+        nombres_disp = ["Todos"] + sorted(df_f[m['nombre']].dropna().astype(str).unique().tolist())
         if st.session_state.f_nom_des not in nombres_disp: st.session_state.f_nom_des = "Todos"
         
         with f_cols[3]: f_nom = st.selectbox("🔍 Colaborador", nombres_disp, key="f_nom_des", on_change=sync_filtros_desempeno)
@@ -730,13 +730,13 @@ elif modulo_elegido == "📈 Performance Comercial":
         df_raw_c, lista_meses, comp_labels = load_data_comercial(anio_sel)
         
         if df_raw_c is not None:
-            op_e = sorted(df_raw_c['Empresa'].dropna().unique())
+            op_e = sorted(df_raw_c['Empresa'].dropna().astype(str).unique())
             op_e = [x for x in op_e if str(x).upper() != "EMPRESA"]
             if st.session_state.f_emp_com not in ["Todas"] + op_e: st.session_state.f_emp_com = "Todas"
             
             with f2: sel_emp = st.selectbox("EMPRESA", ["Todas"] + op_e, key="f_emp_com")
             
-            op_l = sorted(df_raw_c['Localidad'].dropna().unique())
+            op_l = sorted(df_raw_c['Localidad'].dropna().astype(str).unique())
             op_l = [x for x in op_l if str(x).upper() != "LOCALIDAD"]
             if st.session_state.f_loc_com not in ["Todas"] + op_l: st.session_state.f_loc_com = "Todas"
             
@@ -767,7 +767,7 @@ elif modulo_elegido == "📈 Performance Comercial":
             st.divider()
             col_l, col_r = st.columns([1, 2.5])
             
-            op_v = sorted(df_p['Vendedor'].unique())
+            op_v = sorted(df_p['Vendedor'].dropna().astype(str).unique())
             if st.session_state.f_vend_com not in op_v: st.session_state.f_vend_com = op_v[0] if op_v else None
             
             with col_l:
@@ -826,11 +826,11 @@ elif modulo_elegido == "📈 Performance Comercial":
         if df_raw_c is not None:
             with m_f1: sel_p = st.selectbox("Periodo:", ["Acumulado Anual", "Todos los meses (Promedio)"] + lista_meses)
             
-            op_e9 = sorted(df_raw_c['Empresa'].dropna().unique())
+            op_e9 = sorted(df_raw_c['Empresa'].dropna().astype(str).unique())
             if st.session_state.f_emp_9box not in ["Todas"] + op_e9: st.session_state.f_emp_9box = "Todas"
             with m_f2: f_emp9 = st.selectbox("Empresa", ["Todas"] + op_e9, key="f_emp_9box")
             
-            op_l9 = sorted(df_raw_c['Localidad'].dropna().unique())
+            op_l9 = sorted(df_raw_c['Localidad'].dropna().astype(str).unique())
             if st.session_state.f_loc_9box not in ["Todas"] + op_l9: st.session_state.f_loc_9box = "Todas"
             with m_f3: f_loc9 = st.selectbox("Localidad", ["Todas"] + op_l9, key="f_loc_9box")
 
@@ -918,7 +918,7 @@ elif modulo_elegido == "📈 Performance Comercial":
                 
             st.divider()
             
-            op_v9 = ["-- Seleccionar Asesor --"] + sorted(df_9['Vendedor'].unique())
+            op_v9 = ["-- Seleccionar Asesor --"] + sorted(df_9['Vendedor'].dropna().astype(str).unique())
             if st.session_state.f_vend_9box not in op_v9: st.session_state.f_vend_9box = "-- Seleccionar Asesor --"
             
             st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px;'>// FICHA TÉCNICA DE DESEMPEÑO</p>", unsafe_allow_html=True)
