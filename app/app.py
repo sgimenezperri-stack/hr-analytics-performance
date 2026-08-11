@@ -624,7 +624,8 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                 df_show_t['F. Ingreso'] = df_show_t['Fecha_Ingreso'].dt.strftime('%d/%m/%Y').fillna("S/D")
                 
                 meses_hist = [mes for mes in MESES_NOMBRES if mes in df_show_t.columns]
-                cols_mostrar_t = [m['nombre'], m['empresa'], 'F. Ingreso', 'Antigüedad'] + meses_hist + [col_d]
+                # Modificado para incluir Puesto junto a Empresa
+                cols_mostrar_t = [m['nombre'], m['empresa'], m['puesto'], 'F. Ingreso', 'Antigüedad'] + meses_hist + [col_d]
                 cols_numericas_t = meses_hist + [col_d]
                 
                 df_styled_t = df_show_t[cols_mostrar_t].style.format({c: format_pct for c in cols_numericas_t})
