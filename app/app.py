@@ -74,6 +74,7 @@ MESES_NOMBRES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", 
 if 'pagina_desempeno' not in st.session_state: st.session_state.pagina_desempeno = "📊 Resumen General"
 if 'det_sel' not in st.session_state: st.session_state.det_sel = None
 if 'cat_filtrada' not in st.session_state: st.session_state.cat_filtrada = None
+if 'emp_critica_sel' not in st.session_state: st.session_state.emp_critica_sel = None
 
 # --- VARIABLES PARA SINCRONIZACIÓN DE FILTROS ---
 if 'f_emp_des' not in st.session_state: st.session_state.f_emp_des = "Todas"
@@ -373,6 +374,12 @@ def color_sem_table(val):
     if val >= 80: return 'color: #f59e0b; font-weight: 800;'
     return 'color: #ef4444; font-weight: 800;'
 
+def color_eval_comercial(val):
+    if pd.isna(val): return 'color: #64748b;'
+    if val < 70: return 'color: #ef4444; font-weight: 800;'
+    if val < 85: return 'color: #f59e0b; font-weight: 800;'
+    return 'color: #10b981; font-weight: 800;'
+
 
 # --- 4. BARRA LATERAL UNIFICADA ---
 st.sidebar.markdown('<div class="sidebar-header"><h1 style="color:#ffffff;">GRUPO CENOA<br><span style="color:#f97316; font-size:0.8rem;">Gestión de Performance</span></h1></div>', unsafe_allow_html=True)
@@ -550,7 +557,7 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                 df_show['F. Ingreso'] = df_show['Fecha_Ingreso'].dt.strftime('%d/%m/%Y').fillna("S/D")
                 
                 meses_hist = [mes for mes in MESES_NOMBRES if mes in df_show.columns]
-                cols_mostrar = [m['nombre'], m['puesto'], 'F. Ingreso', 'Antigüedad'] + meses_hist + [m['final']]
+                cols_mostrar = [m['nombre'], m['empresa'], m['puesto'], 'F. Ingreso', 'Antigüedad'] + meses_hist + [m['final']]
                 cols_numericas = meses_hist + [m['final']]
                 
                 df_styled = df_show[cols_mostrar].style.format({c: format_pct for c in cols_numericas})
@@ -866,7 +873,68 @@ elif modulo_elegido == "📈 Performance Comercial":
                         template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
                         height=280, margin=dict(t=10, b=10), xaxis=dict(showgrid=True, gridcolor='#1f2937')
                     )
-                    st.plotly_chart(fig_eval, use_container_width=True)
+                    event_bar = st.plotly_chart(fig_eval, use_container_width=True, on_select="rerun", selection_mode="points", key="chart_emp_eval")
+
+                # Detectar selección por clic en el gráfico de barras
+                if event_bar and hasattr(event_bar, 'selection') and event_bar.selection:
+                    pts = getattr(event_bar.selection, 'points', [])
+                    if pts and len(pts) > 0:
+                        clicked_y = pts[0].get('y')
+                        if clicked_y:
+                            st.session_state.emp_critica_sel = clicked_y
+
+                # --- BOTONES DIRECTOS PARA EMPRESAS CON EVALUACIÓN < 70% ---
+                empresas_criticas = df_emp_eval[df_emp_eval['Eval_Gral'] < 70]['Empresa'].dropna().tolist()
+                if empresas_criticas:
+                    st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px; margin-top: 10px;'>// EXPLORAR DETALLE DE VENDEDORES (CLIC EN EL GRÁFICO O EN LOS BOTONES):</p>", unsafe_allow_html=True)
+                    c_crit = st.columns(len(empresas_criticas) + 1, gap="small")
+                    
+                    if c_crit[0].button("⚠️ TODAS (<70%)", key="btn_todas_crit", use_container_width=True):
+                        st.session_state.emp_critica_sel = "TODAS_CRITICAS"
+                        st.rerun()
+                        
+                    for i, emp_c in enumerate(empresas_criticas):
+                        prom_e = df_emp_eval[df_emp_eval['Empresa'] == emp_c]['Eval_Gral'].values[0]
+                        if c_crit[i+1].button(f"🚨 {emp_c} ({prom_e:.1f}%)", key=f"btn_crit_{emp_c}", use_container_width=True):
+                            st.session_state.emp_critica_sel = emp_c
+                            st.rerun()
+
+                # --- MOSTRAR CUADRO DE DETALLE CUANDO SE SELECCIONA UNA EMPRESA ---
+                if st.session_state.emp_critica_sel:
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    if st.session_state.emp_critica_sel == "TODAS_CRITICAS":
+                        titulo_detalle = "Empresas con Promedio < 70%"
+                        df_crit_show = df_eval_full[df_eval_full['Empresa'].isin(empresas_criticas)].copy()
+                    else:
+                        titulo_detalle = f"Empresa: {st.session_state.emp_critica_sel}"
+                        df_crit_show = df_eval_full[df_eval_full['Empresa'] == st.session_state.emp_critica_sel].copy()
+
+                    st.markdown(f"#### 📋 Detalle de Vendedores - {titulo_detalle} (Evaluación 2026)")
+                    
+                    cols_crit = ['Vendedor', 'Empresa', 'Localidad', 'Canal', 'Alcance_Promedio_Real', 'Comp_Total_%', 'Eval_Gral']
+                    df_crit_renamed = df_crit_show[cols_crit].rename(columns={
+                        'Alcance_Promedio_Real': '% Objetivos',
+                        'Comp_Total_%': '% Competencias',
+                        'Eval_Gral': '% Evaluación General'
+                    })
+                    
+                    # Ordenar con las evaluaciones más bajas arriba
+                    df_crit_renamed = df_crit_renamed.sort_values('% Evaluación General', ascending=True)
+
+                    cols_num_crit = ['% Objetivos', '% Competencias', '% Evaluación General']
+                    df_styled_crit = df_crit_renamed.style.format({c: format_pct for c in cols_num_crit})
+                    try:
+                        df_styled_crit = df_styled_crit.map(color_eval_comercial, subset=cols_num_crit)
+                    except AttributeError:
+                        df_styled_crit = df_styled_crit.applymap(color_eval_comercial, subset=cols_num_crit)
+
+                    st.dataframe(df_styled_crit, use_container_width=True)
+                    
+                    col_close, _ = st.columns([1, 4])
+                    with col_close:
+                        if st.button("✖️ Cerrar Listado", key="btn_cerrar_criticos"):
+                            st.session_state.emp_critica_sel = None
+                            st.rerun()
 
             st.divider()
             g1, g2 = st.columns(2)
