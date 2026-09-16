@@ -591,7 +591,7 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                         textposition="top center", textfont=dict(color='#f8fafc')
                     ))
                     fig_evol.add_shape(type="line", x0=0, y0=100, x1=11, y1=100, line=dict(color="#10b981", width=2, dash="dash"))
-                    fig_evol.update_layout(height=350, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(range=[0, 165], showgrid=True, gridcolor='#1f2937'), xaxis=dict(showgrid=False))
+                    fig_evol.update_layout(title=dict(text="// EVOLUCIÓN % OBJETIVOS VOLUMEN DE VENTAS", font=dict(color='#94a3b8', size=11)), height=350, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(range=[0, 165], showgrid=True, gridcolor='#1f2937'), xaxis=dict(showgrid=False))
                     st.plotly_chart(fig_evol, use_container_width=True)
 
                 if st.button("✖️ Cerrar Detalle", key="btn_cerrar_gral"): st.session_state.det_sel = None; st.rerun()
@@ -686,7 +686,7 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                         textposition="top center", textfont=dict(color='#f8fafc')
                     ))
                     fig_evol.add_shape(type="line", x0=0, y0=100, x1=11, y1=100, line=dict(color="#10b981", width=2, dash="dash"))
-                    fig_evol.update_layout(height=350, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(range=[0, 165], showgrid=True, gridcolor='#1f2937'), xaxis=dict(showgrid=False))
+                    fig_evol.update_layout(title=dict(text="// EVOLUCIÓN % OBJETIVOS VOLUMEN DE VENTAS", font=dict(color='#94a3b8', size=11)), height=350, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(range=[0, 165], showgrid=True, gridcolor='#1f2937'), xaxis=dict(showgrid=False))
                     st.plotly_chart(fig_evol, use_container_width=True)
 
                 if st.button("✖️ Cerrar Lista", key="btn_cerrar_tab"): st.session_state.det_sel = None; st.rerun()
@@ -726,7 +726,7 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                     textposition="top center", textfont=dict(color='#f8fafc')
                 ))
                 fig_evol.add_shape(type="line", x0=0, y0=100, x1=11, y1=100, line=dict(color="#10b981", width=2, dash="dash"))
-                fig_evol.update_layout(height=400, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(range=[0, 165], showgrid=True, gridcolor='#1f2937'), xaxis=dict(showgrid=False))
+                fig_evol.update_layout(title=dict(text="// EVOLUCIÓN % OBJETIVOS VOLUMEN DE VENTAS", font=dict(color='#94a3b8', size=11)), height=400, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(range=[0, 165], showgrid=True, gridcolor='#1f2937'), xaxis=dict(showgrid=False))
                 st.plotly_chart(fig_evol, use_container_width=True)
             else: st.info("👈 Seleccione un colaborador en los filtros superiores para ver su evolución.")
     else:
@@ -820,8 +820,53 @@ elif modulo_elegido == "📈 Performance Comercial":
                     fig_evol = go.Figure()
                     fig_evol.add_trace(go.Bar(x=lista_meses, y=y_vals, name="Ventas", text=text_vals, textposition='auto', marker_color='#38bdf8'))
                     fig_evol.add_trace(go.Scatter(x=lista_meses, y=[float(v_data['Objetivo_Mensual'])]*12, mode='lines', name="Objetivo", line=dict(color='#ef4444', dash='dot', width=3)))
-                    fig_evol.update_layout(height=280, margin=dict(t=20, b=10), xaxis=dict(type='category', categoryorder='array', categoryarray=lista_meses), yaxis=dict(showgrid=True, gridcolor='#1f2937'), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                    fig_evol.update_layout(title=dict(text="// EVOLUCIÓN % OBJETIVOS VOLUMEN DE VENTAS", font=dict(color='#94a3b8', size=11)), height=320, margin=dict(t=35, b=10), xaxis=dict(type='category', categoryorder='array', categoryarray=lista_meses), yaxis=dict(showgrid=True, gridcolor='#1f2937'), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                     st.plotly_chart(fig_evol, use_container_width=True)
+                    
+                    # --- RESUMEN VENDEDOR 2026 ---
+                    if str(anio_sel) == "2026":
+                        st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px; margin-top:20px;'>// RESUMEN EVALUACIÓN DE COMPETENCIAS 2026</p>", unsafe_allow_html=True)
+                        ev1, ev2, ev3 = st.columns(3)
+                        
+                        v_obj = v_data['Alcance_Promedio_Real']
+                        v_comp = v_data['Comp_Total_%']
+                        v_gen = (v_obj + v_comp) / 2
+                        
+                        c_obj = "#ef4444" if v_obj < 70 else "#10b981"
+                        c_comp = "#ef4444" if v_comp < 70 else "#10b981"
+                        c_gen = "#ef4444" if v_gen < 70 else "#10b981"
+                        
+                        ev1.markdown(f"<div class='metric-card' style='padding:15px;'><p style='font-size:0.7rem;'>TOTAL % OBJETIVOS</p><h2 style='color:{c_obj}; font-size:1.8rem;'>{v_obj:.1f}%</h2></div>", unsafe_allow_html=True)
+                        ev2.markdown(f"<div class='metric-card' style='padding:15px;'><p style='font-size:0.7rem;'>TOTAL % COMPETENCIAS</p><h2 style='color:{c_comp}; font-size:1.8rem;'>{v_comp:.1f}%</h2></div>", unsafe_allow_html=True)
+                        ev3.markdown(f"<div class='metric-card' style='padding:15px;'><p style='font-size:0.7rem;'>EVALUACIÓN GENERAL</p><h2 style='color:{c_gen}; font-size:1.8rem;'>{v_gen:.1f}%</h2></div>", unsafe_allow_html=True)
+
+            # --- RESUMEN GRUPO Y EMPRESAS 2026 ---
+            if str(anio_sel) == "2026":
+                st.divider()
+                st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px;'>// RESULTADOS DE EVALUACIONES 2026 (CENOA Y EMPRESAS)</p>", unsafe_allow_html=True)
+                
+                df_eval_full = df_raw_c.copy()
+                df_eval_full['Eval_Gral'] = (df_eval_full['Alcance_Promedio_Real'] + df_eval_full['Comp_Total_%']) / 2
+                
+                prom_cenoa = df_eval_full['Eval_Gral'].mean()
+                c_cenoa = "#ef4444" if prom_cenoa < 70 else "#10b981"
+                
+                ec1, ec2 = st.columns([1, 2.5])
+                with ec1:
+                    st.markdown(f"<div class='metric-card' style='height:100%; display:flex; flex-direction:column; justify-content:center;'><p>PROMEDIO GRUPO CENOA</p><h2 style='color:{c_cenoa}; font-size:2.8rem;'>{prom_cenoa:.1f}%</h2></div>", unsafe_allow_html=True)
+                with ec2:
+                    df_emp_eval = df_eval_full.groupby('Empresa')['Eval_Gral'].mean().reset_index().sort_values('Eval_Gral', ascending=True)
+                    df_emp_eval = df_emp_eval[df_emp_eval['Empresa'].str.upper() != 'EMPRESA']
+                    df_emp_eval['Color'] = df_emp_eval['Eval_Gral'].apply(lambda x: '#ef4444' if x < 70 else '#38bdf8')
+                    
+                    fig_eval = px.bar(df_emp_eval, x='Eval_Gral', y='Empresa', orientation='h', text_auto='.1f')
+                    fig_eval.update_traces(marker_color=df_emp_eval['Color'])
+                    fig_eval.update_layout(
+                        xaxis_title="Evaluación General Promedio (%)", yaxis_title="", 
+                        template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
+                        height=280, margin=dict(t=10, b=10), xaxis=dict(showgrid=True, gridcolor='#1f2937')
+                    )
+                    st.plotly_chart(fig_eval, use_container_width=True)
 
             st.divider()
             g1, g2 = st.columns(2)
@@ -969,7 +1014,6 @@ elif modulo_elegido == "📈 Performance Comercial":
                     st.markdown(f"<div class='metric-card' style='border-top: 4px solid {color};'><p>ESTADO ACTUAL</p><h2 style='color:{color}; font-size:1.8rem;'>{q}</h2></div>", unsafe_allow_html=True)
 
                 gl, gr = st.columns([1, 1.5])
-                
                 with gl:
                     st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px; margin-top:20px;'>// DESGLOSE DE COMPETENCIAS</p>", unsafe_allow_html=True)
                     if str(anio_sel9) == "2026":
@@ -981,7 +1025,7 @@ elif modulo_elegido == "📈 Performance Comercial":
                         st.plotly_chart(fig_c, use_container_width=True)
                 
                 with gr:
-                    st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px; margin-top:20px;'>// EVOLUCIÓN % ALCANCE</p>", unsafe_allow_html=True)
+                    st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px; margin-top:20px;'>// EVOLUCIÓN % OBJETIVOS VOLUMEN DE VENTAS</p>", unsafe_allow_html=True)
                     
                     meses_completados = [m for m in lista_meses if pd.notnull(v_f[f"{m}_%"])]
                     alcances_reales = [v_f[f"{m}_%"] for m in meses_completados]
