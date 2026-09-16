@@ -286,6 +286,26 @@ def load_data_comercial(anio_seleccionado):
         columnas_porcentajes = [f"{m}_%" for m in meses_n]
         df['Alcance_Promedio_Real'] = df[columnas_porcentajes].mean(axis=1, skipna=True).fillna(0)
         
+        # --- NUEVA LÓGICA 2026: REEMPLAZO POR COLUMNAS BA y BB ---
+        if str(anio_seleccionado) == "2026":
+            try:
+                col_obj = next((c for c in df.columns if "TOTAL" in str(c).upper() and "OBJETIVO" in str(c).upper()), None)
+                col_comp = next((c for c in df.columns if "TOTAL" in str(c).upper() and "COMPETENCIA" in str(c).upper()), None)
+                
+                if not col_obj and df.shape[1] > 52: col_obj = df.columns[52]
+                if not col_comp and df.shape[1] > 53: col_comp = df.columns[53]
+                
+                if col_obj:
+                    v_obj = pd.to_numeric(df[col_obj].astype(str).str.replace('%', '').str.replace(',', '.'), errors='coerce')
+                    df['Alcance_Promedio_Real'] = np.where(v_obj.notna(), v_obj, df['Alcance_Promedio_Real'])
+                    
+                if col_comp:
+                    v_comp = pd.to_numeric(df[col_comp].astype(str).str.replace('%', '').str.replace(',', '.'), errors='coerce')
+                    df['Comp_Total_%'] = np.where(v_comp.notna(), v_comp, df['Comp_Total_%'])
+            except Exception:
+                pass
+        # -----------------------------------------------------------
+        
         return df, meses_n, comp_labels
     except Exception as e:
         return None, None, None
@@ -530,7 +550,7 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                 df_show['F. Ingreso'] = df_show['Fecha_Ingreso'].dt.strftime('%d/%m/%Y').fillna("S/D")
                 
                 meses_hist = [mes for mes in MESES_NOMBRES if mes in df_show.columns]
-                cols_mostrar = [m['nombre'], m['puesto'], 'F. Ingreso', 'Antigüedad'] + meses_hist + [m['final']]
+                cols_mostrar = [m['nombre'], m['empresa'], m['puesto'], 'F. Ingreso', 'Antigüedad'] + meses_hist + [m['final']]
                 cols_numericas = meses_hist + [m['final']]
                 
                 df_styled = df_show[cols_mostrar].style.format({c: format_pct for c in cols_numericas})
@@ -624,7 +644,6 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                 df_show_t['F. Ingreso'] = df_show_t['Fecha_Ingreso'].dt.strftime('%d/%m/%Y').fillna("S/D")
                 
                 meses_hist = [mes for mes in MESES_NOMBRES if mes in df_show_t.columns]
-                # Modificado para incluir Puesto junto a Empresa
                 cols_mostrar_t = [m['nombre'], m['empresa'], m['puesto'], 'F. Ingreso', 'Antigüedad'] + meses_hist + [col_d]
                 cols_numericas_t = meses_hist + [col_d]
                 
