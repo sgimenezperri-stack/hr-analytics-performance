@@ -212,7 +212,7 @@ def load_all_data_desempeno():
         # Extraer meses explícitamente para historial y promedios dinámicos
         for i, mes in enumerate(MESES_NOMBRES):
             try:
-                df[mes] = pd.to_numeric(df.iloc[:, 15+i].astype(str).str.replace('%','').str.replace(',','.').replace(['-', 'nan', 'None'], np.nan), errors='coerce')
+                df[mes] = pd.to_numeric(df.iloc[:, 15+i].astype(str).str.replace('-', '').str.replace('%','').str.replace(',','.').replace(['nan', 'None'], np.nan), errors='coerce')
             except:
                 df[mes] = np.nan
         
@@ -266,28 +266,29 @@ def load_data_comercial(anio_seleccionado):
         idx_p = [9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31]
         
         for i, mes in enumerate(meses_n):
-            df[f"{mes}_v"] = pd.to_numeric(df.iloc[:, idx_v[i]].astype(str).str.replace(',', '.'), errors='coerce').fillna(0)
-            df[f"{mes}_%"] = pd.to_numeric(df.iloc[:, idx_p[i]].astype(str).str.replace('%', '').str.replace(',', '.'), errors='coerce')
+            df[f"{mes}_v"] = pd.to_numeric(df.iloc[:, idx_v[i]].astype(str).str.replace('-', '').str.replace(',', '.').str.strip(), errors='coerce')
+            df[f"{mes}_%"] = pd.to_numeric(df.iloc[:, idx_p[i]].astype(str).str.replace('-', '').str.replace('%', '').str.replace(',', '.').str.strip(), errors='coerce')
 
         comp_labels = ['CRM', 'Imagen', 'Autogestión', 'Habilidad', 'Técnica']
         idx_comp = [38, 40, 42, 44, 46]
         for i, label in enumerate(comp_labels):
-            df[label] = pd.to_numeric(df.iloc[:, idx_comp[i]].astype(str).str.replace(',', '.'), errors='coerce').fillna(0)
+            df[label] = pd.to_numeric(df.iloc[:, idx_comp[i]].astype(str).str.replace('-', '').str.replace(',', '.').str.strip(), errors='coerce')
 
-        df['Comp_Total_%'] = df[comp_labels].mean(axis=1).fillna(0) * 20
+        df['Comp_Total_%'] = df[comp_labels].mean(axis=1) * 20
         df = df.rename(columns=mapping)
         df['Fecha_Ingreso'] = pd.to_datetime(df['Fecha_Ingreso'], dayfirst=True, errors='coerce')
         
-        for col in ['Objetivo_Mensual', 'Total_Acumulado', 'Promedio', 'Comp_Total_%']:
-            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+        for col in ['Objetivo_Mensual', 'Total_Acumulado', 'Promedio']:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col].astype(str).str.replace('-', '').str.replace(',', '.').str.strip(), errors='coerce')
             
         df = df[df['Vendedor'].astype(str).str.upper() != 'VENDEDOR']
         df['Iniciales'] = df['Vendedor'].apply(lambda x: "".join([n[0] for n in str(x).split() if n]).upper())
         
         columnas_porcentajes = [f"{m}_%" for m in meses_n]
-        df['Alcance_Promedio_Real'] = df[columnas_porcentajes].mean(axis=1, skipna=True).fillna(0)
+        df['Alcance_Promedio_Real'] = df[columnas_porcentajes].mean(axis=1, skipna=True)
         
-        # --- NUEVA LÓGICA 2026: REEMPLAZO POR COLUMNAS BA y BB ---
+        # --- LÓGICA 2026: REEMPLAZO POR COLUMNAS BA y BB ---
         if str(anio_seleccionado) == "2026":
             try:
                 col_obj = next((c for c in df.columns if "TOTAL" in str(c).upper() and "OBJETIVO" in str(c).upper()), None)
@@ -297,12 +298,10 @@ def load_data_comercial(anio_seleccionado):
                 if not col_comp and df.shape[1] > 53: col_comp = df.columns[53]
                 
                 if col_obj:
-                    v_obj = pd.to_numeric(df[col_obj].astype(str).str.replace('%', '').str.replace(',', '.'), errors='coerce')
-                    df['Alcance_Promedio_Real'] = np.where(v_obj.notna(), v_obj, df['Alcance_Promedio_Real'])
+                    df['Alcance_Promedio_Real'] = pd.to_numeric(df[col_obj].astype(str).str.replace('-', '').str.replace('%', '').str.replace(',', '.').str.strip(), errors='coerce')
                     
                 if col_comp:
-                    v_comp = pd.to_numeric(df[col_comp].astype(str).str.replace('%', '').str.replace(',', '.'), errors='coerce')
-                    df['Comp_Total_%'] = np.where(v_comp.notna(), v_comp, df['Comp_Total_%'])
+                    df['Comp_Total_%'] = pd.to_numeric(df[col_comp].astype(str).str.replace('-', '').str.replace('%', '').str.replace(',', '.').str.strip(), errors='coerce')
             except Exception:
                 pass
         # -----------------------------------------------------------
@@ -557,7 +556,7 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                 df_show['F. Ingreso'] = df_show['Fecha_Ingreso'].dt.strftime('%d/%m/%Y').fillna("S/D")
                 
                 meses_hist = [mes for mes in MESES_NOMBRES if mes in df_show.columns]
-                cols_mostrar = [m['nombre'], m['empresa'], m['puesto'], 'F. Ingreso', 'Antigüedad'] + meses_hist + [m['final']]
+                cols_mostrar = [m['nombre'], m['puesto'], 'F. Ingreso', 'Antigüedad'] + meses_hist + [m['final']]
                 cols_numericas = meses_hist + [m['final']]
                 
                 df_styled = df_show[cols_mostrar].style.format({c: format_pct for c in cols_numericas})
@@ -1082,6 +1081,7 @@ elif modulo_elegido == "📈 Performance Comercial":
                     st.markdown(f"<div class='metric-card' style='border-top: 4px solid {color};'><p>ESTADO ACTUAL</p><h2 style='color:{color}; font-size:1.8rem;'>{q}</h2></div>", unsafe_allow_html=True)
 
                 gl, gr = st.columns([1, 1.5])
+                
                 with gl:
                     st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px; margin-top:20px;'>// DESGLOSE DE COMPETENCIAS</p>", unsafe_allow_html=True)
                     if str(anio_sel9) == "2026":
