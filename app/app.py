@@ -190,11 +190,12 @@ st.markdown("""
 # --- 3. MOTORES DE CARGA DE DATOS ---
 @st.cache_data(ttl=600)
 def load_all_data_desempeno():
-    URL = "https://docs.google.com/spreadsheets/d/1fXJ2UsTeOE8ipYXeP5oQYYCHRNtDJDRC/edit"
+    SHEET_ID = "1fXJ2UsTeOE8ipYXeP5oQYYCHRNtDJDRC"
+    GID_DESEMPENO = "771983336" 
     try:
-        sheet_name = urllib.parse.quote("DESEMPEÑO")
-        cache_buster = int(time.time()) # Rompe-caché
-        csv_url = f"{URL.split('/edit')[0]}/gviz/tq?tqx=out:csv&sheet={sheet_name}&_={cache_buster}"
+        cache_buster = int(time.time()) 
+        # MODIFICACIÓN ANTI-FILTROS: Endpoint directo CSV
+        csv_url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID_DESEMPENO}&_={cache_buster}"
         
         df = pd.read_csv(csv_url)
         df.columns = df.columns.str.strip()
@@ -209,7 +210,6 @@ def load_all_data_desempeno():
             clean_str = df[m[k]].astype(str).str.replace('-', '').str.replace('%', '').str.replace(',', '.').str.strip()
             df[m[k]] = pd.to_numeric(clean_str, errors='coerce')
             
-        # Extraer meses explícitamente para historial y promedios dinámicos
         for i, mes in enumerate(MESES_NOMBRES):
             try:
                 df[mes] = pd.to_numeric(df.iloc[:, 15+i].astype(str).str.replace('-', '').str.replace('%','').str.replace(',','.').replace(['nan', 'None'], np.nan), errors='coerce')
@@ -222,11 +222,9 @@ def load_all_data_desempeno():
 
         df[m['tablero']] = df.apply(calc_prom_anual, axis=1)
         
-        # Antiguedad (Columna J - Index 9)
         col_j = df.columns[9]
         df['Fecha_Ingreso'] = pd.to_datetime(df[col_j], dayfirst=True, errors='coerce')
 
-        # Frecuencia (Columna AD - Index 29)
         try:
             if len(df.columns) > 29:
                 df['Frecuencia'] = df.iloc[:, 29].fillna("S/D")
@@ -251,8 +249,15 @@ def load_all_data_desempeno():
 def load_data_comercial(anio_seleccionado):
     SHEET_ID = "1fXJ2UsTeOE8ipYXeP5oQYYCHRNtDJDRC" 
     SHEET_NAME = f"PERFO%20COMERCIAL{anio_seleccionado}" 
-    cache_buster = int(time.time()) # Rompe-caché
-    URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={SHEET_NAME}&_={cache_buster}"
+    cache_buster = int(time.time()) 
+    
+    # MODIFICACIÓN ANTI-FILTROS: Endpoint directo CSV si conocemos el GID
+    if str(anio_seleccionado) == "2026":
+        URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=2034622346&_={cache_buster}"
+    else:
+        # Fallback a gviz para 2025 (Si en el futuro sabes el GID de 2025, puedes cambiar la lógica)
+        URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={SHEET_NAME}&_={cache_buster}"
+        
     try:
         df = pd.read_csv(URL)
         mapping = {
@@ -290,7 +295,6 @@ def load_data_comercial(anio_seleccionado):
         
         df['Eval_Gral_Excel'] = np.nan
         
-        # --- LÓGICA 2026: EXTRACCIÓN EXACTA DE COLUMNAS BA, BB Y BC ---
         if str(anio_seleccionado) == "2026":
             try:
                 col_obj = next((c for c in df.columns if "TOTAL" in str(c).upper() and "OBJETIVO" in str(c).upper()), None)
@@ -311,7 +315,6 @@ def load_data_comercial(anio_seleccionado):
                     df['Eval_Gral_Excel'] = pd.to_numeric(df[col_gen].astype(str).str.replace('-', '').str.replace('%', '').str.replace(',', '.').str.strip(), errors='coerce')
             except Exception:
                 pass
-        # -----------------------------------------------------------
         
         return df, meses_n, comp_labels
     except Exception as e:
@@ -563,7 +566,7 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                 df_show['F. Ingreso'] = df_show['Fecha_Ingreso'].dt.strftime('%d/%m/%Y').fillna("S/D")
                 
                 meses_hist = [mes for mes in MESES_NOMBRES if mes in df_show.columns]
-                cols_mostrar = [m['nombre'], m['empresa'], m['puesto'], 'F. Ingreso', 'Antigüedad'] + meses_hist + [m['final']]
+                cols_mostrar = [m['nombre'], m['puesto'], 'F. Ingreso', 'Antigüedad'] + meses_hist + [m['final']]
                 cols_numericas = meses_hist + [m['final']]
                 
                 df_styled = df_show[cols_mostrar].style.format({c: format_pct for c in cols_numericas})
@@ -657,6 +660,7 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                 df_show_t['F. Ingreso'] = df_show_t['Fecha_Ingreso'].dt.strftime('%d/%m/%Y').fillna("S/D")
                 
                 meses_hist = [mes for mes in MESES_NOMBRES if mes in df_show_t.columns]
+                # Modificado para incluir Puesto junto a Empresa
                 cols_mostrar_t = [m['nombre'], m['empresa'], m['puesto'], 'F. Ingreso', 'Antigüedad'] + meses_hist + [col_d]
                 cols_numericas_t = meses_hist + [col_d]
                 
@@ -1101,6 +1105,7 @@ elif modulo_elegido == "📈 Performance Comercial":
                     st.markdown(f"<div class='metric-card' style='border-top: 4px solid {color};'><p>ESTADO ACTUAL</p><h2 style='color:{color}; font-size:1.8rem;'>{q}</h2></div>", unsafe_allow_html=True)
 
                 gl, gr = st.columns([1, 1.5])
+                
                 with gl:
                     st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px; margin-top:20px;'>// DESGLOSE DE COMPETENCIAS</p>", unsafe_allow_html=True)
                     if str(anio_sel9) == "2026":
