@@ -30,7 +30,6 @@ USUARIOS_HABILITADOS = [
 CLAVE_ACCESO = "rrhhcenoa"
 
 if not st.session_state.autenticado:
-    # CSS básico solo para que el fondo aplique también en la pantalla de login
     st.markdown("""
         <style>
         .stApp { background-color: #0e121a; font-family: 'Inter', sans-serif; }
@@ -60,7 +59,7 @@ if not st.session_state.autenticado:
                     st.error("Credenciales incorrectas o usuario no autorizado.")
         st.markdown("</div>", unsafe_allow_html=True)
     
-    st.stop() # <-- Esto frena la carga del dashboard si no pasaron el login
+    st.stop()
 
 
 # =====================================================================
@@ -189,17 +188,26 @@ st.markdown("""
 
 # --- 3. MOTORES DE CARGA DE DATOS ---
 
-# --- ESCUDO ANTI-ERRORES: Función estricta para números ---
+# --- ESCUDO ANTI-ERRORES MATEMÁTICO ---
 def safe_float_convert(val):
-    """Convierte a número ignorando guiones, espacios y textos vacíos, devolviendo NaN si no es válido."""
+    """Convierte celdas a número. Ignora completamente guiones y errores de Excel devolviendo NaN."""
     if pd.isna(val): return np.nan
     s = str(val).strip()
-    if s in ['-', '', 'nan', 'None', 'S/D', '#DIV/0!', '#REF!']: return np.nan
-    s = s.replace('%', '').replace(',', '.')
+    # Limpiamos los símbolos
+    s = s.replace('%', '').replace(',', '.').replace('$', '').strip()
+    # Si la celda es un guión, error, o vacía, la neutralizamos
+    if s in ['-', '', 'nan', 'None', 'S/D', '#DIV/0!', '#REF!', '#VALOR!', '#N/A']: 
+        return np.nan
     try:
         return float(s)
     except:
         return np.nan
+
+def safe_extract(df, idx):
+    """Extrae la columna por índice de forma segura, incluso si la hoja de Google Sheets viene truncada."""
+    if idx < df.shape[1]:
+        return df.iloc[:, idx].apply(safe_float_convert)
+    return pd.Series([np.nan] * len(df))
 
 @st.cache_data(ttl=600)
 def load_all_data_desempeno():
@@ -280,15 +288,14 @@ def load_data_comercial(anio_seleccionado):
         idx_p = [9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31]
         
         for i, mes in enumerate(meses_n):
-            df[f"{mes}_v"] = df.iloc[:, idx_v[i]].apply(safe_float_convert)
-            df[f"{mes}_%"] = df.iloc[:, idx_p[i]].apply(safe_float_convert)
+            df[f"{mes}_v"] = safe_extract(df, idx_v[i])
+            df[f"{mes}_%"] = safe_extract(df, idx_p[i])
 
         comp_labels = ['CRM', 'Imagen', 'Autogestión', 'Habilidad', 'Técnica']
         idx_comp = [38, 40, 42, 44, 46]
         for i, label in enumerate(comp_labels):
-            df[label] = df.iloc[:, idx_comp[i]].apply(safe_float_convert)
+            df[label] = safe_extract(df, idx_comp[i])
 
-        # Calculo para 2025 de las competencias x20
         df['Comp_Total_%'] = df[comp_labels].mean(axis=1, skipna=True) * 20
         df = df.rename(columns=mapping)
         df['Fecha_Ingreso'] = pd.to_datetime(df['Fecha_Ingreso'], dayfirst=True, errors='coerce')
@@ -297,6 +304,8 @@ def load_data_comercial(anio_seleccionado):
             if col in df.columns:
                 df[col] = df[col].apply(safe_float_convert)
             
+        df = df[df['Vendedor'].notna()]
+        df = df[df['Vendedor'].astype(str).str.strip() != '']
         df = df[df['Vendedor'].astype(str).str.upper() != 'VENDEDOR']
         df['Iniciales'] = df['Vendedor'].apply(lambda x: "".join([n[0] for n in str(x).split() if n]).upper())
         
@@ -305,37 +314,18 @@ def load_data_comercial(anio_seleccionado):
         
         df['Eval_Gral_Excel'] = np.nan
         
-        # --- LÓGICA 2026 ACTUALIZADA: REEMPLAZO POR BA, BB, BC + DESGLOSE BD A BH ---
+        # --- LÓGICA 2026 ACTUALIZADA: REEMPLAZO EXACTO POR ÍNDICE ---
         if str(anio_seleccionado) == "2026":
-            try:
-                col_obj = next((c for c in df.columns if "TOTAL" in str(c).upper() and "OBJETIVO" in str(c).upper()), None)
-                col_comp = next((c for c in df.columns if "TOTAL" in str(c).upper() and "COMPETENCIA" in str(c).upper()), None)
-                col_gen = next((c for c in df.columns if "TOTAL" in str(c).upper() and ("EVALUACION" in str(c).upper() or "EVALUACIÓN" in str(c).upper())), None)
-                
-                if not col_obj and df.shape[1] > 52: col_obj = df.columns[52]
-                if not col_comp and df.shape[1] > 53: col_comp = df.columns[53]
-                if not col_gen and df.shape[1] > 54: col_gen = df.columns[54]
-                
-                if col_obj:
-                    df['Alcance_Promedio_Real'] = df[col_obj].apply(safe_float_convert)
-                    
-                if col_comp:
-                    df['Comp_Total_%'] = df[col_comp].apply(safe_float_convert)
-                    
-                if col_gen:
-                    df['Eval_Gral_Excel'] = df[col_gen].apply(safe_float_convert)
-                
-                # Desglose de Competencias 2026 (Desde Columna BD(55) a BH(59))
-                comp_labels_2026 = ['Comunicación e influencia', 'Orientación al cliente', 'Profesionalismo comercial', 'Gestión y organización', 'Orientación a los resultados']
-                comp_labels = comp_labels_2026 
-                if df.shape[1] >= 60:
-                    for idx, label in zip(range(55, 60), comp_labels):
-                        df[label] = df.iloc[:, idx].apply(safe_float_convert)
-                else:
-                    for label in comp_labels: df[label] = np.nan
-            except Exception:
-                for label in ['Comunicación e influencia', 'Orientación al cliente', 'Profesionalismo comercial', 'Gestión y organización', 'Orientación a los resultados']:
-                    df[label] = np.nan
+            # BA=52 (Obj), BB=53 (Comp), BC=54 (Gral)
+            df['Alcance_Promedio_Real'] = safe_extract(df, 52)
+            df['Comp_Total_%'] = safe_extract(df, 53)
+            df['Eval_Gral_Excel'] = safe_extract(df, 54)
+            
+            # Desglose BD(55) a BH(59)
+            comp_labels_2026 = ['Comunicación e influencia', 'Orientación al cliente', 'Profesionalismo comercial', 'Gestión y organización', 'Orientación a los resultados']
+            comp_labels = comp_labels_2026 
+            for i, label in enumerate(comp_labels_2026):
+                df[label] = safe_extract(df, 55 + i)
         # -----------------------------------------------------------
         
         return df, meses_n, comp_labels
@@ -588,7 +578,7 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                 df_show['F. Ingreso'] = df_show['Fecha_Ingreso'].dt.strftime('%d/%m/%Y').fillna("S/D")
                 
                 meses_hist = [mes for mes in MESES_NOMBRES if mes in df_show.columns]
-                cols_mostrar = [m['nombre'], m['empresa'], m['puesto'], 'F. Ingreso', 'Antigüedad'] + meses_hist + [m['final']]
+                cols_mostrar = [m['nombre'], m['puesto'], 'F. Ingreso', 'Antigüedad'] + meses_hist + [m['final']]
                 cols_numericas = meses_hist + [m['final']]
                 
                 df_styled = df_show[cols_mostrar].style.format({c: format_pct for c in cols_numericas})
@@ -682,7 +672,6 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                 df_show_t['F. Ingreso'] = df_show_t['Fecha_Ingreso'].dt.strftime('%d/%m/%Y').fillna("S/D")
                 
                 meses_hist = [mes for mes in MESES_NOMBRES if mes in df_show_t.columns]
-                # Modificado para incluir Puesto junto a Empresa
                 cols_mostrar_t = [m['nombre'], m['empresa'], m['puesto'], 'F. Ingreso', 'Antigüedad'] + meses_hist + [col_d]
                 cols_numericas_t = meses_hist + [col_d]
                 
@@ -891,7 +880,7 @@ elif modulo_elegido == "📈 Performance Comercial":
                 st.divider()
                 st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px;'>// RESULTADOS DE EVALUACIONES 2026 (CENOA Y EMPRESAS)</p>", unsafe_allow_html=True)
                 
-                df_eval_full = df_raw_c.copy()
+                df_eval_full = df_p.copy() # <-- Ahora el resumen responde también a los filtros aplicados arriba
                 
                 if 'Eval_Gral_Excel' in df_eval_full.columns and df_eval_full['Eval_Gral_Excel'].notna().any():
                     df_eval_full['Eval_Gral'] = df_eval_full['Eval_Gral_Excel']
@@ -1162,11 +1151,13 @@ elif modulo_elegido == "📈 Performance Comercial":
                 
                 with gl:
                     st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px; margin-top:20px;'>// DESGLOSE DE COMPETENCIAS</p>", unsafe_allow_html=True)
-                    
-                    comp_pcts = [v_f[c] if str(anio_sel9) == "2026" else v_f[c] * 20 for c in comp_labels]
-                    fig_c = px.bar(x=comp_pcts, y=comp_labels, orientation='h', color=comp_labels, text=[f"{val:.1f}%" if pd.notna(val) else "S/D" for val in comp_pcts])
-                    fig_c.update_layout(showlegend=False, xaxis_range=[0, max([v for v in comp_pcts if pd.notna(v)] + [100]) + 10], xaxis_title="Nivel (%)", yaxis_title="", template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)') 
-                    st.plotly_chart(fig_c, use_container_width=True)
+                    if str(anio_sel9) == "2026":
+                        st.info("Desglose de competencias aún no disponible para 2026.")
+                    else:
+                        comp_pcts = [v_f[c] * 20 for c in comp_labels]
+                        fig_c = px.bar(x=comp_pcts, y=comp_labels, orientation='h', color=comp_labels, text=[f"{val:.1f}%" for val in comp_pcts])
+                        fig_c.update_layout(showlegend=False, xaxis_range=[0, max(comp_pcts + [100]) + 10], xaxis_title="Nivel (%)", yaxis_title="", template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)') 
+                        st.plotly_chart(fig_c, use_container_width=True)
                 
                 with gr:
                     st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px; margin-top:20px;'>// EVOLUCIÓN % OBJETIVOS VOLUMEN DE VENTAS</p>", unsafe_allow_html=True)
