@@ -194,7 +194,6 @@ def load_all_data_desempeno():
     GID_DESEMPENO = "771983336" 
     try:
         cache_buster = int(time.time()) 
-        # MODIFICACIÓN ANTI-FILTROS: Endpoint directo CSV
         csv_url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID_DESEMPENO}&_={cache_buster}"
         
         df = pd.read_csv(csv_url)
@@ -251,11 +250,9 @@ def load_data_comercial(anio_seleccionado):
     SHEET_NAME = f"PERFO%20COMERCIAL{anio_seleccionado}" 
     cache_buster = int(time.time()) 
     
-    # MODIFICACIÓN ANTI-FILTROS: Endpoint directo CSV si conocemos el GID
     if str(anio_seleccionado) == "2026":
         URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=2034622346&_={cache_buster}"
     else:
-        # Fallback a gviz para 2025 (Si en el futuro sabes el GID de 2025, puedes cambiar la lógica)
         URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={SHEET_NAME}&_={cache_buster}"
         
     try:
@@ -295,6 +292,7 @@ def load_data_comercial(anio_seleccionado):
         
         df['Eval_Gral_Excel'] = np.nan
         
+        # --- LÓGICA 2026 ACTUALIZADA: REEMPLAZO POR BA, BB, BC + DESGLOSE BD A BH ---
         if str(anio_seleccionado) == "2026":
             try:
                 col_obj = next((c for c in df.columns if "TOTAL" in str(c).upper() and "OBJETIVO" in str(c).upper()), None)
@@ -313,8 +311,19 @@ def load_data_comercial(anio_seleccionado):
                     
                 if col_gen:
                     df['Eval_Gral_Excel'] = pd.to_numeric(df[col_gen].astype(str).str.replace('-', '').str.replace('%', '').str.replace(',', '.').str.strip(), errors='coerce')
+                
+                # Desglose de Competencias 2026 (Desde Columna BD(55) a BH(59))
+                comp_labels_2026 = ['Comunicación e influencia', 'Orientación al cliente', 'Profesionalismo comercial', 'Gestión y organización', 'Orientación a los resultados']
+                comp_labels = comp_labels_2026 
+                if df.shape[1] >= 60:
+                    for idx, label in zip(range(55, 60), comp_labels):
+                        df[label] = pd.to_numeric(df.iloc[:, idx].astype(str).str.replace('-', '').str.replace('%', '').str.replace(',', '.').str.strip(), errors='coerce')
+                else:
+                    for label in comp_labels: df[label] = np.nan
             except Exception:
-                pass
+                for label in ['Comunicación e influencia', 'Orientación al cliente', 'Profesionalismo comercial', 'Gestión y organización', 'Orientación a los resultados']:
+                    df[label] = np.nan
+        # -----------------------------------------------------------
         
         return df, meses_n, comp_labels
     except Exception as e:
@@ -566,7 +575,7 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                 df_show['F. Ingreso'] = df_show['Fecha_Ingreso'].dt.strftime('%d/%m/%Y').fillna("S/D")
                 
                 meses_hist = [mes for mes in MESES_NOMBRES if mes in df_show.columns]
-                cols_mostrar = [m['nombre'], m['puesto'], 'F. Ingreso', 'Antigüedad'] + meses_hist + [m['final']]
+                cols_mostrar = [m['nombre'], m['empresa'], m['puesto'], 'F. Ingreso', 'Antigüedad'] + meses_hist + [m['final']]
                 cols_numericas = meses_hist + [m['final']]
                 
                 df_styled = df_show[cols_mostrar].style.format({c: format_pct for c in cols_numericas})
@@ -1108,13 +1117,11 @@ elif modulo_elegido == "📈 Performance Comercial":
                 
                 with gl:
                     st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px; margin-top:20px;'>// DESGLOSE DE COMPETENCIAS</p>", unsafe_allow_html=True)
-                    if str(anio_sel9) == "2026":
-                        st.info("Desglose de competencias aún no disponible para 2026.")
-                    else:
-                        comp_pcts = [v_f[c] * 20 for c in comp_labels]
-                        fig_c = px.bar(x=comp_pcts, y=comp_labels, orientation='h', color=comp_labels, text=[f"{val:.1f}%" for val in comp_pcts])
-                        fig_c.update_layout(showlegend=False, xaxis_range=[0, max(comp_pcts + [100]) + 10], xaxis_title="Nivel (%)", yaxis_title="", template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)') 
-                        st.plotly_chart(fig_c, use_container_width=True)
+                    
+                    comp_pcts = [v_f[c] if str(anio_sel9) == "2026" else v_f[c] * 20 for c in comp_labels]
+                    fig_c = px.bar(x=comp_pcts, y=comp_labels, orientation='h', color=comp_labels, text=[f"{val:.1f}%" if pd.notna(val) else "S/D" for val in comp_pcts])
+                    fig_c.update_layout(showlegend=False, xaxis_range=[0, max([v for v in comp_pcts if pd.notna(v)] + [100]) + 10], xaxis_title="Nivel (%)", yaxis_title="", template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)') 
+                    st.plotly_chart(fig_c, use_container_width=True)
                 
                 with gr:
                     st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px; margin-top:20px;'>// EVOLUCIÓN % OBJETIVOS VOLUMEN DE VENTAS</p>", unsafe_allow_html=True)
