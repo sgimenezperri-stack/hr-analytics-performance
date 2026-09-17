@@ -188,6 +188,19 @@ st.markdown("""
 
 
 # --- 3. MOTORES DE CARGA DE DATOS ---
+
+# --- ESCUDO ANTI-ERRORES: Función estricta para números ---
+def safe_float_convert(val):
+    """Convierte a número ignorando guiones, espacios y textos vacíos, devolviendo NaN si no es válido."""
+    if pd.isna(val): return np.nan
+    s = str(val).strip()
+    if s in ['-', '', 'nan', 'None', 'S/D', '#DIV/0!', '#REF!']: return np.nan
+    s = s.replace('%', '').replace(',', '.')
+    try:
+        return float(s)
+    except:
+        return np.nan
+
 @st.cache_data(ttl=600)
 def load_all_data_desempeno():
     SHEET_ID = "1fXJ2UsTeOE8ipYXeP5oQYYCHRNtDJDRC"
@@ -206,12 +219,11 @@ def load_all_data_desempeno():
         df[m['nombre']] = df[m['nombre']].astype(str).str.upper().str.strip()
         
         for k in ['comp', 'tablero', 'final']:
-            clean_str = df[m[k]].astype(str).str.replace('-', '').str.replace('%', '').str.replace(',', '.').str.strip()
-            df[m[k]] = pd.to_numeric(clean_str, errors='coerce')
+            df[m[k]] = df[m[k]].apply(safe_float_convert)
             
         for i, mes in enumerate(MESES_NOMBRES):
             try:
-                df[mes] = pd.to_numeric(df.iloc[:, 15+i].astype(str).str.replace('-', '').str.replace('%','').str.replace(',','.').replace(['nan', 'None'], np.nan), errors='coerce')
+                df[mes] = df.iloc[:, 15+i].apply(safe_float_convert)
             except:
                 df[mes] = np.nan
         
@@ -268,21 +280,22 @@ def load_data_comercial(anio_seleccionado):
         idx_p = [9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31]
         
         for i, mes in enumerate(meses_n):
-            df[f"{mes}_v"] = pd.to_numeric(df.iloc[:, idx_v[i]].astype(str).str.replace('-', '').str.replace(',', '.').str.strip(), errors='coerce')
-            df[f"{mes}_%"] = pd.to_numeric(df.iloc[:, idx_p[i]].astype(str).str.replace('-', '').str.replace('%', '').str.replace(',', '.').str.strip(), errors='coerce')
+            df[f"{mes}_v"] = df.iloc[:, idx_v[i]].apply(safe_float_convert)
+            df[f"{mes}_%"] = df.iloc[:, idx_p[i]].apply(safe_float_convert)
 
         comp_labels = ['CRM', 'Imagen', 'Autogestión', 'Habilidad', 'Técnica']
         idx_comp = [38, 40, 42, 44, 46]
         for i, label in enumerate(comp_labels):
-            df[label] = pd.to_numeric(df.iloc[:, idx_comp[i]].astype(str).str.replace('-', '').str.replace(',', '.').str.strip(), errors='coerce')
+            df[label] = df.iloc[:, idx_comp[i]].apply(safe_float_convert)
 
-        df['Comp_Total_%'] = df[comp_labels].mean(axis=1) * 20
+        # Calculo para 2025 de las competencias x20
+        df['Comp_Total_%'] = df[comp_labels].mean(axis=1, skipna=True) * 20
         df = df.rename(columns=mapping)
         df['Fecha_Ingreso'] = pd.to_datetime(df['Fecha_Ingreso'], dayfirst=True, errors='coerce')
         
         for col in ['Objetivo_Mensual', 'Total_Acumulado', 'Promedio']:
             if col in df.columns:
-                df[col] = pd.to_numeric(df[col].astype(str).str.replace('-', '').str.replace(',', '.').str.strip(), errors='coerce')
+                df[col] = df[col].apply(safe_float_convert)
             
         df = df[df['Vendedor'].astype(str).str.upper() != 'VENDEDOR']
         df['Iniciales'] = df['Vendedor'].apply(lambda x: "".join([n[0] for n in str(x).split() if n]).upper())
@@ -297,27 +310,27 @@ def load_data_comercial(anio_seleccionado):
             try:
                 col_obj = next((c for c in df.columns if "TOTAL" in str(c).upper() and "OBJETIVO" in str(c).upper()), None)
                 col_comp = next((c for c in df.columns if "TOTAL" in str(c).upper() and "COMPETENCIA" in str(c).upper()), None)
-                col_gen = next((c for c in df.columns if "TOTAL" in str(c).upper() and "EVALUACION" in str(c).upper() or "EVALUACIÓN" in str(c).upper()), None)
+                col_gen = next((c for c in df.columns if "TOTAL" in str(c).upper() and ("EVALUACION" in str(c).upper() or "EVALUACIÓN" in str(c).upper())), None)
                 
                 if not col_obj and df.shape[1] > 52: col_obj = df.columns[52]
                 if not col_comp and df.shape[1] > 53: col_comp = df.columns[53]
                 if not col_gen and df.shape[1] > 54: col_gen = df.columns[54]
                 
                 if col_obj:
-                    df['Alcance_Promedio_Real'] = pd.to_numeric(df[col_obj].astype(str).str.replace('-', '').str.replace('%', '').str.replace(',', '.').str.strip(), errors='coerce')
+                    df['Alcance_Promedio_Real'] = df[col_obj].apply(safe_float_convert)
                     
                 if col_comp:
-                    df['Comp_Total_%'] = pd.to_numeric(df[col_comp].astype(str).str.replace('-', '').str.replace('%', '').str.replace(',', '.').str.strip(), errors='coerce')
+                    df['Comp_Total_%'] = df[col_comp].apply(safe_float_convert)
                     
                 if col_gen:
-                    df['Eval_Gral_Excel'] = pd.to_numeric(df[col_gen].astype(str).str.replace('-', '').str.replace('%', '').str.replace(',', '.').str.strip(), errors='coerce')
+                    df['Eval_Gral_Excel'] = df[col_gen].apply(safe_float_convert)
                 
                 # Desglose de Competencias 2026 (Desde Columna BD(55) a BH(59))
                 comp_labels_2026 = ['Comunicación e influencia', 'Orientación al cliente', 'Profesionalismo comercial', 'Gestión y organización', 'Orientación a los resultados']
                 comp_labels = comp_labels_2026 
                 if df.shape[1] >= 60:
                     for idx, label in zip(range(55, 60), comp_labels):
-                        df[label] = pd.to_numeric(df.iloc[:, idx].astype(str).str.replace('-', '').str.replace('%', '').str.replace(',', '.').str.strip(), errors='coerce')
+                        df[label] = df.iloc[:, idx].apply(safe_float_convert)
                 else:
                     for label in comp_labels: df[label] = np.nan
             except Exception:
@@ -880,13 +893,12 @@ elif modulo_elegido == "📈 Performance Comercial":
                 
                 df_eval_full = df_raw_c.copy()
                 
-                # --- NUEVO CÁLCULO PARA EVITAR DISCREPANCIAS CON EXCEL ---
                 if 'Eval_Gral_Excel' in df_eval_full.columns and df_eval_full['Eval_Gral_Excel'].notna().any():
                     df_eval_full['Eval_Gral'] = df_eval_full['Eval_Gral_Excel']
                 else:
                     df_eval_full['Eval_Gral'] = df_eval_full[['Alcance_Promedio_Real', 'Comp_Total_%']].mean(axis=1, skipna=True)
                 
-                prom_cenoa = df_eval_full['Eval_Gral'].mean()
+                prom_cenoa = df_eval_full['Eval_Gral'].mean(skipna=True)
                 c_cenoa = "#ef4444" if pd.notna(prom_cenoa) and prom_cenoa < 70 else "#10b981"
                 prom_cenoa_str = f"{prom_cenoa:.1f}%" if pd.notna(prom_cenoa) else "S/D"
                 
@@ -894,7 +906,7 @@ elif modulo_elegido == "📈 Performance Comercial":
                 with ec1:
                     st.markdown(f"<div class='metric-card' style='height:100%; display:flex; flex-direction:column; justify-content:center;'><p>PROMEDIO GRUPO CENOA</p><h2 style='color:{c_cenoa}; font-size:2.8rem;'>{prom_cenoa_str}</h2></div>", unsafe_allow_html=True)
                 with ec2:
-                    df_emp_eval = df_eval_full.groupby('Empresa')['Eval_Gral'].mean().reset_index().sort_values('Eval_Gral', ascending=True)
+                    df_emp_eval = df_eval_full.dropna(subset=['Eval_Gral']).groupby('Empresa')['Eval_Gral'].mean().reset_index().sort_values('Eval_Gral', ascending=True)
                     df_emp_eval = df_emp_eval[df_emp_eval['Empresa'].str.upper() != 'EMPRESA']
                     df_emp_eval['Color'] = df_emp_eval['Eval_Gral'].apply(lambda x: '#ef4444' if x < 70 else '#38bdf8')
                     
@@ -907,7 +919,6 @@ elif modulo_elegido == "📈 Performance Comercial":
                     )
                     event_bar = st.plotly_chart(fig_eval, use_container_width=True, on_select="rerun", selection_mode="points", key="chart_emp_eval")
 
-                # Detectar selección por clic en el gráfico de barras
                 if event_bar and hasattr(event_bar, 'selection') and event_bar.selection:
                     pts = getattr(event_bar.selection, 'points', [])
                     if pts and len(pts) > 0:
@@ -915,7 +926,6 @@ elif modulo_elegido == "📈 Performance Comercial":
                         if clicked_y:
                             st.session_state.emp_critica_sel = clicked_y
 
-                # --- BOTONES DIRECTOS PARA EMPRESAS CON EVALUACIÓN < 70% ---
                 empresas_criticas = df_emp_eval[df_emp_eval['Eval_Gral'] < 70]['Empresa'].dropna().tolist()
                 if empresas_criticas:
                     st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px; margin-top: 10px;'>// EXPLORAR DETALLE DE VENDEDORES (CLIC EN EL GRÁFICO O EN LOS BOTONES):</p>", unsafe_allow_html=True)
@@ -931,7 +941,6 @@ elif modulo_elegido == "📈 Performance Comercial":
                             st.session_state.emp_critica_sel = emp_c
                             st.rerun()
 
-                # --- MOSTRAR CUADRO DE DETALLE CUANDO SE SELECCIONA UNA EMPRESA ---
                 if st.session_state.emp_critica_sel:
                     st.markdown("<br>", unsafe_allow_html=True)
                     if st.session_state.emp_critica_sel == "TODAS_CRITICAS":
@@ -950,8 +959,7 @@ elif modulo_elegido == "📈 Performance Comercial":
                         'Eval_Gral': '% Evaluación General'
                     })
                     
-                    # Ordenar con las evaluaciones más bajas arriba
-                    df_crit_renamed = df_crit_renamed.sort_values('% Evaluación General', ascending=True)
+                    df_crit_renamed = df_crit_renamed.dropna(subset=['% Evaluación General']).sort_values('% Evaluación General', ascending=True)
 
                     cols_num_crit = ['% Objetivos', '% Competencias', '% Evaluación General']
                     df_styled_crit = df_crit_renamed.style.format({c: format_pct for c in cols_num_crit})
@@ -967,6 +975,43 @@ elif modulo_elegido == "📈 Performance Comercial":
                         if st.button("✖️ Cerrar Listado", key="btn_cerrar_criticos"):
                             st.session_state.emp_critica_sel = None
                             st.rerun()
+                
+                # --- NUEVO: ANÁLISIS DE COMPETENCIAS (GENERAL Y POR EMPRESA) ---
+                st.divider()
+                st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px;'>// ANÁLISIS DE COMPETENCIAS COMERCIALES 2026</p>", unsafe_allow_html=True)
+                
+                comp_cols_2026 = ['Comunicación e influencia', 'Orientación al cliente', 'Profesionalismo comercial', 'Gestión y organización', 'Orientación a los resultados']
+                df_comp_valid = df_eval_full.dropna(subset=comp_cols_2026, how='all')
+                
+                if not df_comp_valid.empty:
+                    gen_comp_means = df_comp_valid[comp_cols_2026].mean(skipna=True).sort_values(ascending=False)
+                    
+                    if not gen_comp_means.isna().all():
+                        top_comp = gen_comp_means.index[0]
+                        top_val = gen_comp_means.iloc[0]
+                        bot_comp = gen_comp_means.index[-1]
+                        bot_val = gen_comp_means.iloc[-1]
+                        
+                        c_top = "#10b981" if top_val >= 80 else ("#f59e0b" if top_val >= 70 else "#ef4444")
+                        c_bot = "#10b981" if bot_val >= 80 else ("#f59e0b" if bot_val >= 70 else "#ef4444")
+                        
+                        k1, k2 = st.columns(2)
+                        k1.markdown(f"<div class='metric-card' style='padding:15px;'><p style='font-size:0.7rem;'>COMPETENCIA MÁS ALTA</p><h3 style='color:#f8fafc; font-size:1.2rem;'>{top_comp}</h3><h2 style='color:{c_top}; font-size:1.8rem; margin:0;'>{top_val:.1f}%</h2></div>", unsafe_allow_html=True)
+                        k2.markdown(f"<div class='metric-card' style='padding:15px;'><p style='font-size:0.7rem;'>COMPETENCIA CON MAYOR OPORTUNIDAD</p><h3 style='color:#f8fafc; font-size:1.2rem;'>{bot_comp}</h3><h2 style='color:{c_bot}; font-size:1.8rem; margin:0;'>{bot_val:.1f}%</h2></div>", unsafe_allow_html=True)
+                        
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        st.markdown("<p style='color: #cbd5e1; font-size: 14px; margin-bottom: 10px;'><b>Promedio de Competencias detallado por Empresa:</b></p>", unsafe_allow_html=True)
+                        
+                        df_comp_emp = df_comp_valid.groupby('Empresa')[comp_cols_2026].mean(skipna=True).reset_index()
+                        df_comp_emp = df_comp_emp[df_comp_emp['Empresa'].str.upper() != 'EMPRESA']
+                        
+                        df_styled_comp = df_comp_emp.style.format({c: format_pct for c in comp_cols_2026})
+                        try:
+                            df_styled_comp = df_styled_comp.map(color_eval_comercial, subset=comp_cols_2026)
+                        except AttributeError:
+                            df_styled_comp = df_styled_comp.applymap(color_eval_comercial, subset=comp_cols_2026)
+                        
+                        st.dataframe(df_styled_comp, use_container_width=True)
 
             st.divider()
             g1, g2 = st.columns(2)
