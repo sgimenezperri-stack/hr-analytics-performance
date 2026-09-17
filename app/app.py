@@ -30,6 +30,7 @@ USUARIOS_HABILITADOS = [
 CLAVE_ACCESO = "rrhhcenoa"
 
 if not st.session_state.autenticado:
+    # CSS básico solo para que el fondo aplique también en la pantalla de login
     st.markdown("""
         <style>
         .stApp { background-color: #0e121a; font-family: 'Inter', sans-serif; }
@@ -193,9 +194,7 @@ def safe_float_convert(val):
     """Convierte celdas a número. Ignora completamente guiones y errores de Excel devolviendo NaN."""
     if pd.isna(val): return np.nan
     s = str(val).strip()
-    # Limpiamos los símbolos
     s = s.replace('%', '').replace(',', '.').replace('$', '').strip()
-    # Si la celda es un guión, error, o vacía, la neutralizamos
     if s in ['-', '', 'nan', 'None', 'S/D', '#DIV/0!', '#REF!', '#VALOR!', '#N/A']: 
         return np.nan
     try:
@@ -314,14 +313,12 @@ def load_data_comercial(anio_seleccionado):
         
         df['Eval_Gral_Excel'] = np.nan
         
-        # --- LÓGICA 2026 ACTUALIZADA: REEMPLAZO EXACTO POR ÍNDICE ---
+        # --- LÓGICA 2026 ACTUALIZADA ---
         if str(anio_seleccionado) == "2026":
-            # BA=52 (Obj), BB=53 (Comp), BC=54 (Gral)
             df['Alcance_Promedio_Real'] = safe_extract(df, 52)
             df['Comp_Total_%'] = safe_extract(df, 53)
             df['Eval_Gral_Excel'] = safe_extract(df, 54)
             
-            # Desglose BD(55) a BH(59)
             comp_labels_2026 = ['Comunicación e influencia', 'Orientación al cliente', 'Profesionalismo comercial', 'Gestión y organización', 'Orientación a los resultados']
             comp_labels = comp_labels_2026 
             for i, label in enumerate(comp_labels_2026):
@@ -713,7 +710,9 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                         textposition="top center", textfont=dict(color='#f8fafc')
                     ))
                     fig_evol.add_shape(type="line", x0=0, y0=100, x1=11, y1=100, line=dict(color="#10b981", width=2, dash="dash"))
-                    fig_evol.update_layout(title=dict(text="// EVOLUCIÓN MENSUAL", font=dict(color='#94a3b8', size=11)), height=350, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(range=[0, 165], showgrid=True, gridcolor='#1f2937'), xaxis=dict(showgrid=False))
+                    
+                    # --- FIX: TÍTULO ACTUALIZADO ---
+                    fig_evol.update_layout(title=dict(text="// EVOLUCIÓN % OBJETIVOS VOLUMEN DE VENTAS", font=dict(color='#94a3b8', size=11)), height=350, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(range=[0, 165], showgrid=True, gridcolor='#1f2937'), xaxis=dict(showgrid=False))
                     st.plotly_chart(fig_evol, use_container_width=True)
 
                 if st.button("✖️ Cerrar Lista", key="btn_cerrar_tab"): st.session_state.det_sel = None; st.rerun()
@@ -753,7 +752,9 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                     textposition="top center", textfont=dict(color='#f8fafc')
                 ))
                 fig_evol.add_shape(type="line", x0=0, y0=100, x1=11, y1=100, line=dict(color="#10b981", width=2, dash="dash"))
-                fig_evol.update_layout(title=dict(text="// EVOLUCIÓN MENSUAL", font=dict(color='#94a3b8', size=11)), height=400, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(range=[0, 165], showgrid=True, gridcolor='#1f2937'), xaxis=dict(showgrid=False))
+                
+                # --- FIX: TÍTULO ACTUALIZADO ---
+                fig_evol.update_layout(title=dict(text="// EVOLUCIÓN % OBJETIVOS VOLUMEN DE VENTAS", font=dict(color='#94a3b8', size=11)), height=400, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(range=[0, 165], showgrid=True, gridcolor='#1f2937'), xaxis=dict(showgrid=False))
                 st.plotly_chart(fig_evol, use_container_width=True)
             else: st.info("👈 Seleccione un colaborador en los filtros superiores para ver su evolución.")
     else:
@@ -847,6 +848,8 @@ elif modulo_elegido == "📈 Performance Comercial":
                     fig_evol = go.Figure()
                     fig_evol.add_trace(go.Bar(x=lista_meses, y=y_vals, name="Ventas", text=text_vals, textposition='auto', marker_color='#38bdf8'))
                     fig_evol.add_trace(go.Scatter(x=lista_meses, y=[float(v_data['Objetivo_Mensual'])]*12, mode='lines', name="Objetivo", line=dict(color='#ef4444', dash='dot', width=3)))
+                    
+                    # --- FIX: TÍTULO ACTUALIZADO ---
                     fig_evol.update_layout(title=dict(text="// EVOLUCIÓN % OBJETIVOS VOLUMEN DE VENTAS", font=dict(color='#94a3b8', size=11)), height=320, margin=dict(t=35, b=10), xaxis=dict(type='category', categoryorder='array', categoryarray=lista_meses), yaxis=dict(showgrid=True, gridcolor='#1f2937'), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                     st.plotly_chart(fig_evol, use_container_width=True)
                     
@@ -880,8 +883,9 @@ elif modulo_elegido == "📈 Performance Comercial":
                 st.divider()
                 st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px;'>// RESULTADOS DE EVALUACIONES 2026 (CENOA Y EMPRESAS)</p>", unsafe_allow_html=True)
                 
-                df_eval_full = df_p.copy() # <-- Ahora el resumen responde también a los filtros aplicados arriba
+                df_eval_full = df_raw_c.copy()
                 
+                # --- NUEVO CÁLCULO ESTRICTO ---
                 if 'Eval_Gral_Excel' in df_eval_full.columns and df_eval_full['Eval_Gral_Excel'].notna().any():
                     df_eval_full['Eval_Gral'] = df_eval_full['Eval_Gral_Excel']
                 else:
@@ -964,43 +968,6 @@ elif modulo_elegido == "📈 Performance Comercial":
                         if st.button("✖️ Cerrar Listado", key="btn_cerrar_criticos"):
                             st.session_state.emp_critica_sel = None
                             st.rerun()
-                
-                # --- NUEVO: ANÁLISIS DE COMPETENCIAS (GENERAL Y POR EMPRESA) ---
-                st.divider()
-                st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px;'>// ANÁLISIS DE COMPETENCIAS COMERCIALES 2026</p>", unsafe_allow_html=True)
-                
-                comp_cols_2026 = ['Comunicación e influencia', 'Orientación al cliente', 'Profesionalismo comercial', 'Gestión y organización', 'Orientación a los resultados']
-                df_comp_valid = df_eval_full.dropna(subset=comp_cols_2026, how='all')
-                
-                if not df_comp_valid.empty:
-                    gen_comp_means = df_comp_valid[comp_cols_2026].mean(skipna=True).sort_values(ascending=False)
-                    
-                    if not gen_comp_means.isna().all():
-                        top_comp = gen_comp_means.index[0]
-                        top_val = gen_comp_means.iloc[0]
-                        bot_comp = gen_comp_means.index[-1]
-                        bot_val = gen_comp_means.iloc[-1]
-                        
-                        c_top = "#10b981" if top_val >= 80 else ("#f59e0b" if top_val >= 70 else "#ef4444")
-                        c_bot = "#10b981" if bot_val >= 80 else ("#f59e0b" if bot_val >= 70 else "#ef4444")
-                        
-                        k1, k2 = st.columns(2)
-                        k1.markdown(f"<div class='metric-card' style='padding:15px;'><p style='font-size:0.7rem;'>COMPETENCIA MÁS ALTA</p><h3 style='color:#f8fafc; font-size:1.2rem;'>{top_comp}</h3><h2 style='color:{c_top}; font-size:1.8rem; margin:0;'>{top_val:.1f}%</h2></div>", unsafe_allow_html=True)
-                        k2.markdown(f"<div class='metric-card' style='padding:15px;'><p style='font-size:0.7rem;'>COMPETENCIA CON MAYOR OPORTUNIDAD</p><h3 style='color:#f8fafc; font-size:1.2rem;'>{bot_comp}</h3><h2 style='color:{c_bot}; font-size:1.8rem; margin:0;'>{bot_val:.1f}%</h2></div>", unsafe_allow_html=True)
-                        
-                        st.markdown("<br>", unsafe_allow_html=True)
-                        st.markdown("<p style='color: #cbd5e1; font-size: 14px; margin-bottom: 10px;'><b>Promedio de Competencias detallado por Empresa:</b></p>", unsafe_allow_html=True)
-                        
-                        df_comp_emp = df_comp_valid.groupby('Empresa')[comp_cols_2026].mean(skipna=True).reset_index()
-                        df_comp_emp = df_comp_emp[df_comp_emp['Empresa'].str.upper() != 'EMPRESA']
-                        
-                        df_styled_comp = df_comp_emp.style.format({c: format_pct for c in comp_cols_2026})
-                        try:
-                            df_styled_comp = df_styled_comp.map(color_eval_comercial, subset=comp_cols_2026)
-                        except AttributeError:
-                            df_styled_comp = df_styled_comp.applymap(color_eval_comercial, subset=comp_cols_2026)
-                        
-                        st.dataframe(df_styled_comp, use_container_width=True)
 
             st.divider()
             g1, g2 = st.columns(2)
@@ -1151,15 +1118,14 @@ elif modulo_elegido == "📈 Performance Comercial":
                 
                 with gl:
                     st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px; margin-top:20px;'>// DESGLOSE DE COMPETENCIAS</p>", unsafe_allow_html=True)
-                    if str(anio_sel9) == "2026":
-                        st.info("Desglose de competencias aún no disponible para 2026.")
-                    else:
-                        comp_pcts = [v_f[c] * 20 for c in comp_labels]
-                        fig_c = px.bar(x=comp_pcts, y=comp_labels, orientation='h', color=comp_labels, text=[f"{val:.1f}%" for val in comp_pcts])
-                        fig_c.update_layout(showlegend=False, xaxis_range=[0, max(comp_pcts + [100]) + 10], xaxis_title="Nivel (%)", yaxis_title="", template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)') 
-                        st.plotly_chart(fig_c, use_container_width=True)
+                    
+                    comp_pcts = [v_f[c] if str(anio_sel9) == "2026" else v_f[c] * 20 for c in comp_labels]
+                    fig_c = px.bar(x=comp_pcts, y=comp_labels, orientation='h', color=comp_labels, text=[f"{val:.1f}%" if pd.notna(val) else "S/D" for val in comp_pcts])
+                    fig_c.update_layout(showlegend=False, xaxis_range=[0, max([v for v in comp_pcts if pd.notna(v)] + [100]) + 10], xaxis_title="Nivel (%)", yaxis_title="", template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)') 
+                    st.plotly_chart(fig_c, use_container_width=True)
                 
                 with gr:
+                    # --- FIX: TÍTULO ACTUALIZADO ---
                     st.markdown("<p style='color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 1px; margin-top:20px;'>// EVOLUCIÓN % OBJETIVOS VOLUMEN DE VENTAS</p>", unsafe_allow_html=True)
                     
                     meses_completados = [m for m in lista_meses if pd.notnull(v_f[f"{m}_%"])]
