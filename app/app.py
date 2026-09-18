@@ -60,7 +60,7 @@ if not st.session_state.autenticado:
                     st.error("Credenciales incorrectas o usuario no autorizado.")
         st.markdown("</div>", unsafe_allow_html=True)
     
-    st.stop() # <-- Esto frena la carga del dashboard si no pasaron el login
+    st.stop()
 
 
 # =====================================================================
@@ -217,13 +217,19 @@ def load_all_data_desempeno():
         csv_url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID_DESEMPENO}&_={cache_buster}"
         
         df = pd.read_csv(csv_url)
-        # Limpieza de nombres de columna para evitar saltos de línea exportados
-        df.columns = df.columns.str.strip().str.replace('\n', ' ')
+        # Limpiamos exhaustivamente los nombres de columnas para que no rompa la lectura
+        df.columns = df.columns.astype(str).str.strip().str.replace('\n', ' ').str.replace('\r', '')
         
-        # Búsqueda dinámica de columnas clave para evitar errores por cambios sutiles de nombre
-        c_comp = next((c for c in df.columns if 'COMPETENCIAS' in str(c).upper() and 'PUNT' in str(c).upper()), '%PUNT.EC.1°INSTANCIA COMPETENCIAS')
-        c_tab = next((c for c in df.columns if 'TABLERO' in str(c).upper() and 'ACUMULADO' in str(c).upper()), '% ACUMULADO TABLERO')
-        c_fin = next((c for c in df.columns if str(c).strip().upper() == 'DESEMPEÑO'), 'DESEMPEÑO')
+        # Búsqueda Robusta + Fallback directo por coordenadas
+        c_comp = df.columns[12] if len(df.columns) > 12 else '%PUNT.EC.1°INSTANCIA COMPETENCIAS'
+        c_tab = df.columns[13] if len(df.columns) > 13 else '% ACUMULADO TABLERO'
+        c_fin = df.columns[14] if len(df.columns) > 14 else 'DESEMPEÑO'
+        
+        for col in df.columns:
+            c_up = col.upper()
+            if 'COMPETENCIA' in c_up and 'PUNT' in c_up: c_comp = col
+            elif 'TABLERO' in c_up and 'ACUMULADO' in c_up: c_tab = col
+            elif c_up == 'DESEMPEÑO' or c_up == 'DESEMPEÑO FINAL': c_fin = col
 
         m = {
             'nombre': df.columns[1], 'empresa': df.columns[2], 'localidad': df.columns[3],
@@ -682,7 +688,6 @@ if modulo_elegido == "📊 Gestión de Desempeño":
                 df_show_t['F. Ingreso'] = df_show_t['Fecha_Ingreso'].dt.strftime('%d/%m/%Y').fillna("S/D")
                 
                 meses_hist = [mes for mes in MESES_NOMBRES if mes in df_show_t.columns]
-                # Modificado para incluir Puesto junto a Empresa
                 cols_mostrar_t = [m['nombre'], m['empresa'], m['puesto'], 'F. Ingreso', 'Antigüedad'] + meses_hist + [col_d]
                 cols_numericas_t = meses_hist + [col_d]
                 
